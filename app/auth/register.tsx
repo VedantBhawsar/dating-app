@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter, useNavigation } from "expo-router";
+import {auth} from '@/app/firebase'
 
 export default function RegisterScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  console.log(auth.currentUser)
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -31,7 +33,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="Full Name"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ddd"
         value={name}
         onChangeText={setName}
       />
@@ -39,7 +41,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ddd"
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
@@ -48,7 +50,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ddd"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
@@ -59,7 +61,7 @@ export default function RegisterScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.replace("/auth/loginScreen")}>
-        <Text style={styles.loginText}>Already have an account? Log in</Text>
+        <Text style={styles.registerText}>Already have an account? Log in</Text>
       </TouchableOpacity>
     </View>
   );
@@ -70,41 +72,64 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FF1647", // Tinder dark theme
+    backgroundColor: "#FF1647",
     paddingHorizontal: 30,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: "bold",
     color: "white",
-    marginBottom: 20,
+    marginBottom: 30,
   },
   input: {
     width: "100%",
     height: 50,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 25,
     paddingHorizontal: 15,
     fontSize: 16,
     color: "white",
     marginBottom: 15,
   },
   button: {
+    width: "100%",
     backgroundColor: "white",
-    paddingVertical: 12,
-    paddingHorizontal: 30,
+    paddingVertical: 14,
     borderRadius: 25,
-    marginTop: 10,
+    alignItems: "center",
+    marginBottom: 15,
   },
   buttonText: {
-    color: "#fd5068",
-    fontSize: 18,
+    color: "#FF1647",
+    fontSize: 16,
     fontWeight: "bold",
   },
-  loginText: {
-    marginTop: 15,
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingVertical: 14,
+    borderRadius: 25,
+    marginBottom: 15,
+  },
+  googleButtonText: {
     color: "white",
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  orText: {
+    color: "white",
+    fontSize: 16,
+    marginBottom: 15,
+    fontWeight: "bold",
+  },
+  registerText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
     textDecorationLine: "underline",
   },
 });
+
