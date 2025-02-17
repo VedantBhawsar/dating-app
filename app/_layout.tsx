@@ -7,7 +7,7 @@ const RootLayout = () => {
   const router = useRouter();
   const auth = getAuth(); 
   useEffect(() => {
-    router.replace(""); // Ensure correct case-sensitive route
+    router.replace("/auth/login"); // Ensure correct case-sensitive route
   }, []);
 
   return (

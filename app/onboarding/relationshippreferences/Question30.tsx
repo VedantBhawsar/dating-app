@@ -1,57 +1,57 @@
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question33 = () => {
+const Question30 = () => {
   const router = useRouter();
 
-  const handleSelect = (livingPlace: string) => {
-    console.log(livingPlace);
-    router.push('/onboarding/values&futureplans/Question34'); // Navigate to next question
+  const handleSelect = (dateType: string) => {
+    console.log(dateType);
+    router.push('/onboarding/values&futureplans/Question31'); // Navigate to next question
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>Where do you see yourself living in the future? </Text>
+      <Text style={styles.questionText}>What is your ideal date?</Text>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('City')}
+        onPress={() => handleSelect('Dinner')}
       >
-        <Text style={styles.buttonText}>City</Text>
+        <Text style={styles.buttonText}>Dinner</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('Village')}
+        onPress={() => handleSelect('Adventure')}
       >
-        <Text style={styles.buttonText}>Village</Text>
+        <Text style={styles.buttonText}>Adventure</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('Abroad')}
+        onPress={() => handleSelect('Movie Night')}
       >
-        <Text style={styles.buttonText}>Abroad</Text>
+        <Text style={styles.buttonText}>Movie Night</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('Flexible')}
+        onPress={() => handleSelect('Stay-in')}
       >
-        <Text style={styles.buttonText}>Flexible</Text>
+        <Text style={styles.buttonText}>Stay-in</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-export default Question33;
+export default Question30;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff', // Dark theme background
+    backgroundColor: '#fff', // White background
     paddingHorizontal: 20,
   },
   questionText: {

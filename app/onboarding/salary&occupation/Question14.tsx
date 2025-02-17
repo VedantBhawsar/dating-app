@@ -1,43 +1,41 @@
+// Question3.tsx
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question35 = () => {
+const Question14 = () => {
   const router = useRouter();
 
-  const handleSelect = (response: string) => {
-    console.log(response);
-    router.push('/onboarding/values&futureplans/Question36'); // Navigate to the next question
+  const handleSelect = (preference: string) => {
+    // Handle the selected preference if needed
+    console.log(preference);
+    router.push('/onboarding/salary&occupation/Question15'); // Navigate to the next question
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>Do you believe opposites attract or similarity matters more?</Text>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Opposites Attract')}
-      >
-        <Text style={styles.buttonText}>Opposites Attract</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Similarity Matters More')}
-      >
-        <Text style={styles.buttonText}>Similarity Matters More</Text>
-      </TouchableOpacity>
+      <Text style={styles.questionText}>Do you have a preference for your partner’s occupation?</Text>
+      
+      {['Yes', 'No'].map((preference, index) => (
+        <TouchableOpacity 
+          key={index} 
+          style={styles.button} 
+          onPress={() => handleSelect(preference)}
+        >
+          <Text style={styles.buttonText}>{preference}</Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
 
-export default Question35;
+export default Question14;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff', // Dark theme background
+    backgroundColor: '#fff', // White background
     paddingHorizontal: 20,
   },
   questionText: {
@@ -54,7 +52,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     width: '100%',
-    marginBottom: 10,
+    marginBottom: 15,
     shadowColor: '#FF4D67',
     shadowOpacity: 0.5,
     shadowRadius: 10,

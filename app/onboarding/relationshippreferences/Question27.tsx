@@ -1,50 +1,45 @@
+// Question1.tsx
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question33 = () => {
+const Question27 = () => {
   const router = useRouter();
 
-  const handleSelect = (livingPlace: string) => {
-    console.log(livingPlace);
-    router.push('/onboarding/values&futureplans/Question34'); // Navigate to next question
+  const handleSelect = (space: string) => {
+    // Handle the selected personal space preference
+    console.log(space);
+    router.push('/onboarding/relationshippreferences/Question28'); // Navigate to the next question
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>Where do you see yourself living in the future? </Text>
+      <Text style={styles.questionText}>How much personal space do you need in a relationship? </Text>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('City')}
+        onPress={() => handleSelect('A lot')}
       >
-        <Text style={styles.buttonText}>City</Text>
+        <Text style={styles.buttonText}>A lot</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('Village')}
+        onPress={() => handleSelect('Moderate')}
       >
-        <Text style={styles.buttonText}>Village</Text>
+        <Text style={styles.buttonText}>Moderate</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('Abroad')}
+        onPress={() => handleSelect('Very little')}
       >
-        <Text style={styles.buttonText}>Abroad</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Flexible')}
-      >
-        <Text style={styles.buttonText}>Flexible</Text>
+        <Text style={styles.buttonText}>Very little</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-export default Question33;
+export default Question27;
 
 const styles = StyleSheet.create({
   container: {

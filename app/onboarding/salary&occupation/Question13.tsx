@@ -1,43 +1,41 @@
+// Question2.tsx
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question35 = () => {
+const Question13 = () => {
   const router = useRouter();
 
-  const handleSelect = (response: string) => {
-    console.log(response);
-    router.push('/onboarding/values&futureplans/Question36'); // Navigate to the next question
+  const handleSelect = (incomeRange: string) => {
+    // Handle the selected income range if needed
+    console.log(incomeRange);
+    router.push('/onboarding/salary&occupation/Question14'); // Navigate to the next question
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>Do you believe opposites attract or similarity matters more?</Text>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Opposites Attract')}
-      >
-        <Text style={styles.buttonText}>Opposites Attract</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Similarity Matters More')}
-      >
-        <Text style={styles.buttonText}>Similarity Matters More</Text>
-      </TouchableOpacity>
+      <Text style={styles.questionText}>What is your annual income range?</Text>
+      
+      {['Less than 5 LPA', '5-10 LPA', '10-20 LPA', '20+ LPA', 'Prefer not to say'].map((incomeRange, index) => (
+        <TouchableOpacity 
+          key={index} 
+          style={styles.button} 
+          onPress={() => handleSelect(incomeRange)}
+        >
+          <Text style={styles.buttonText}>{incomeRange}</Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
 
-export default Question35;
+export default Question13;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff', // Dark theme background
+    backgroundColor: '#fff', // White background
     paddingHorizontal: 20,
   },
   questionText: {
@@ -54,7 +52,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     width: '100%',
-    marginBottom: 10,
+    marginBottom: 15,
     shadowColor: '#FF4D67',
     shadowOpacity: 0.5,
     shadowRadius: 10,

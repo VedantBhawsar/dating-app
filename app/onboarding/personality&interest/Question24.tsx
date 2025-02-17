@@ -1,43 +1,36 @@
+// Question3.tsx
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question31 = () => {
+const Question24 = () => {
   const router = useRouter();
 
-  const handleSelect = (importance: string) => {
-    console.log(importance);
-    router.push('/onboarding/values&futureplans/Question32'); // Navigate to next question
+  const handleSelect = (genre: string) => {
+    // Handle the selected genre if needed
+    console.log(genre);
+    router.push('/onboarding/personality&interest/Question25'); // Navigate to the next question
   };
+
+  const genres = ['Action', 'Romance', 'Sci-Fi', 'Comedy', 'Drama', 'Horror']; // Example movie/show genres
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>How important is religion/spirituality in your life? </Text>
+      <Text style={styles.questionText}>What kind of movies or shows do you enjoy? </Text>
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Very')}
-      >
-        <Text style={styles.buttonText}>Very</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Somewhat')}
-      >
-        <Text style={styles.buttonText}>Somewhat</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Not at all')}
-      >
-        <Text style={styles.buttonText}>Not at all</Text>
-      </TouchableOpacity>
+      {genres.map((genre, index) => (
+        <TouchableOpacity 
+          key={index} 
+          style={styles.button} 
+          onPress={() => handleSelect(genre)}
+        >
+          <Text style={styles.buttonText}>{genre}</Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
 
-export default Question31;
+export default Question24;
 
 const styles = StyleSheet.create({
   container: {

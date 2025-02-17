@@ -1,49 +1,49 @@
-import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question1 = () => {
+const Question7 = () => {
   const router = useRouter();
 
   return (
     <View style={styles.container}>
-      <TextInput 
-        placeholder="What's your full name?" 
-        style={styles.input} 
-        placeholderTextColor="#aaa"
-      />
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => router.push('/profile-setup/basic/Question2')}
-      >
-        <Text style={styles.buttonText}>Next</Text>
-      </TouchableOpacity>
+      <Text style={styles.question}>How important is caste compatibility for you in a partner?</Text>
+      <View style={styles.optionsContainer}>
+        {['Very Important', 'Somewhat Important', 'Not Important'].map((option) => (
+          <TouchableOpacity 
+            key={option}
+            style={styles.button} 
+            onPress={() => router.push('/onboarding/caste&community/Question8')}>
+            <Text style={styles.buttonText}>{option}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 };
 
-export default Question1;
+export default Question7;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212', // Dark theme background
+    backgroundColor: '#fff',
     paddingHorizontal: 20,
   },
-  input: {
-    width: '100%',
-    backgroundColor: '#1E1E1E', 
-    color: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#333',
-    fontSize: 16,
+  question: {
+    fontSize: 20,
+    fontWeight: 'bold',
     marginBottom: 20,
+    color: '#333',
+  },
+  optionsContainer: {
+    marginBottom: 20,
+    width: '100%',
+    alignItems: 'center',
   },
   button: {
-    backgroundColor: '#FF4D67', // Tinder-like button color
+    backgroundColor: '#FF4D67',
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 25,
@@ -53,6 +53,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 5,
+    marginVertical: 10,
   },
   buttonText: {
     color: '#fff',
@@ -60,4 +61,3 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
-

@@ -1,50 +1,59 @@
+// Question2.tsx
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question33 = () => {
+const Question29 = () => {
   const router = useRouter();
 
-  const handleSelect = (livingPlace: string) => {
-    console.log(livingPlace);
-    router.push('/onboarding/values&futureplans/Question34'); // Navigate to next question
+  const handleSelect = (loveLanguage: string) => {
+    // Handle the selected love language
+    console.log(loveLanguage);
+    router.push('/onboarding/relationshippreferences/Question30'); // Navigate to the next question
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>Where do you see yourself living in the future? </Text>
+      <Text style={styles.questionText}>What is your love language? </Text>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('City')}
+        onPress={() => handleSelect('Words of Affirmation')}
       >
-        <Text style={styles.buttonText}>City</Text>
+        <Text style={styles.buttonText}>Words of Affirmation</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('Village')}
+        onPress={() => handleSelect('Acts of Service')}
       >
-        <Text style={styles.buttonText}>Village</Text>
+        <Text style={styles.buttonText}>Acts of Service</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('Abroad')}
+        onPress={() => handleSelect('Gifts')}
       >
-        <Text style={styles.buttonText}>Abroad</Text>
+        <Text style={styles.buttonText}>Gifts</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('Flexible')}
+        onPress={() => handleSelect('Quality Time')}
       >
-        <Text style={styles.buttonText}>Flexible</Text>
+        <Text style={styles.buttonText}>Quality Time</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={() => handleSelect('Physical Touch')}
+      >
+        <Text style={styles.buttonText}>Physical Touch</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-export default Question33;
+export default Question29;
 
 const styles = StyleSheet.create({
   container: {

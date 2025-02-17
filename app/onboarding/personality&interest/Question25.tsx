@@ -1,57 +1,45 @@
+// Question4.tsx
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question33 = () => {
+const Question25 = () => {
   const router = useRouter();
 
-  const handleSelect = (livingPlace: string) => {
-    console.log(livingPlace);
-    router.push('/onboarding/values&futureplans/Question34'); // Navigate to next question
+  const handleSelect = (time: string) => {
+    // Handle the selected time preference if needed
+    console.log(time);
+    router.push('/onboarding/relationshippreferences/Question26'); // Navigate to the next question
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>Where do you see yourself living in the future? </Text>
+      <Text style={styles.questionText}>Are you a morning person or a night owl?</Text>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('City')}
+        onPress={() => handleSelect('Morning Person')}
       >
-        <Text style={styles.buttonText}>City</Text>
+        <Text style={styles.buttonText}>Morning Person</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => handleSelect('Village')}
+        onPress={() => handleSelect('Night Owl')}
       >
-        <Text style={styles.buttonText}>Village</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Abroad')}
-      >
-        <Text style={styles.buttonText}>Abroad</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Flexible')}
-      >
-        <Text style={styles.buttonText}>Flexible</Text>
+        <Text style={styles.buttonText}>Night Owl</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-export default Question33;
+export default Question25;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff', // Dark theme background
+    backgroundColor: '#fff', // White background
     paddingHorizontal: 20,
   },
   questionText: {

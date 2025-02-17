@@ -1,24 +1,60 @@
-import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
 const Question1 = () => {
   const router = useRouter();
 
+  const handleOptionSelect = (ageGroup) => {
+    console.log(`Selected age group: ${ageGroup}`);
+    // You can store the selected option in state or pass it to the next screen
+    router.push('/onboarding/basic/Question2');
+  };
+
   return (
     <View style={styles.container}>
-      <TextInput 
-        placeholder="What's your full name?" 
-        style={styles.input} 
-        placeholderTextColor="#aaa"
-      />
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => router.push('/profile-setup/basic/Question2')}
+      <Text style={styles.question}>What is your age group? </Text>
+      
+      <TouchableOpacity
+        style={styles.optionButton}
+        onPress={() => handleOptionSelect('18-24')}
       >
-        <Text style={styles.buttonText}>Next</Text>
+        <Text style={styles.buttonText}>18-24</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.optionButton}
+        onPress={() => handleOptionSelect('25-30')}
+      >
+        <Text style={styles.buttonText}>25-30</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.optionButton}
+        onPress={() => handleOptionSelect('31-40')}
+      >
+        <Text style={styles.buttonText}>31-40</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.optionButton}
+        onPress={() => handleOptionSelect('41-50')}
+      >
+        <Text style={styles.buttonText}>41-50</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.optionButton}
+        onPress={() => handleOptionSelect('50+')}
+      >
+        <Text style={styles.buttonText}>50+</Text>
       </TouchableOpacity>
     </View>
   );
+};
+
+// Setting headerShown: false for Expo Router
+Question1.options = {
+  headerShown: false,  // This will remove the top header
 };
 
 export default Question1;
@@ -28,27 +64,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212', // Dark theme background
+    backgroundColor: '#fff', // White background for consistency
     paddingHorizontal: 20,
   },
-  input: {
-    width: '100%',
-    backgroundColor: '#1E1E1E', 
-    color: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#333',
-    fontSize: 16,
-    marginBottom: 20,
+  question: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    color: '#333',
   },
-  button: {
-    backgroundColor: '#FF4D67', // Tinder-like button color
+  optionButton: {
+    backgroundColor: '#FF4D67', // Button color
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 25,
     alignItems: 'center',
     width: '100%',
+    marginBottom: 10,
     shadowColor: '#FF4D67',
     shadowOpacity: 0.5,
     shadowRadius: 10,
@@ -60,4 +92,3 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
-

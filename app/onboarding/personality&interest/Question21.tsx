@@ -1,43 +1,34 @@
+// Question1.tsx
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question31 = () => {
+const Question21 = () => {
   const router = useRouter();
 
-  const handleSelect = (importance: string) => {
-    console.log(importance);
-    router.push('/onboarding/values&futureplans/Question32'); // Navigate to next question
+  const handleSelect = (rating: string) => {
+    // Handle the selected rating if needed
+    console.log(rating);
+    router.push('/onboarding/personality&interest/Question22'); // Navigate to the next question
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>How important is religion/spirituality in your life? </Text>
+      <Text style={styles.questionText}>How introverted or extroverted are you? (Scale of 1-5)</Text>
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Very')}
-      >
-        <Text style={styles.buttonText}>Very</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Somewhat')}
-      >
-        <Text style={styles.buttonText}>Somewhat</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Not at all')}
-      >
-        <Text style={styles.buttonText}>Not at all</Text>
-      </TouchableOpacity>
+      {['1', '2', '3', '4', '5'].map((rating, index) => (
+        <TouchableOpacity 
+          key={index} 
+          style={styles.button} 
+          onPress={() => handleSelect(rating)}
+        >
+          <Text style={styles.buttonText}>{rating}</Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
 
-export default Question31;
+export default Question21;
 
 const styles = StyleSheet.create({
   container: {

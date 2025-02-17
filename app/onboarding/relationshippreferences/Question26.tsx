@@ -1,43 +1,36 @@
+// Question4.tsx
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question31 = () => {
+const Question26 = () => {
   const router = useRouter();
 
-  const handleSelect = (importance: string) => {
-    console.log(importance);
-    router.push('/onboarding/values&futureplans/Question32'); // Navigate to next question
+  const handleSelect = (personality: string) => {
+    // Handle the selected personality type if needed
+    console.log(personality);
+    router.push('/onboarding/relationshippreferences/Question27'); // Navigate to the next question
   };
+
+  const personalities = ['Funny', 'Intelligent', 'Kind', 'Ambitious', 'Confident', 'Creative']; // Example personality types
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>How important is religion/spirituality in your life? </Text>
+      <Text style={styles.questionText}>What is your ideal partner’s personality type? </Text>
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Very')}
-      >
-        <Text style={styles.buttonText}>Very</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Somewhat')}
-      >
-        <Text style={styles.buttonText}>Somewhat</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Not at all')}
-      >
-        <Text style={styles.buttonText}>Not at all</Text>
-      </TouchableOpacity>
+      {personalities.map((personality, index) => (
+        <TouchableOpacity 
+          key={index} 
+          style={styles.button} 
+          onPress={() => handleSelect(personality)}
+        >
+          <Text style={styles.buttonText}>{personality}</Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
 
-export default Question31;
+export default Question26;
 
 const styles = StyleSheet.create({
   container: {

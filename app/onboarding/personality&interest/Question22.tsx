@@ -1,43 +1,36 @@
+// Question1.tsx
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question31 = () => {
+const Question22 = () => {
   const router = useRouter();
 
-  const handleSelect = (importance: string) => {
-    console.log(importance);
-    router.push('/onboarding/values&futureplans/Question32'); // Navigate to next question
+  const handleSelect = (hobby: string) => {
+    // Handle the selected hobby if needed
+    console.log(hobby);
+    router.push('/onboarding/personality&interest/Question23'); // Navigate to the next question
   };
+
+  const hobbies = ['Reading', 'Traveling', 'Music', 'Gaming', 'Cooking', 'Sports', 'Photography']; // Example hobbies
 
   return (
     <View style={styles.container}>
-      <Text style={styles.questionText}>How important is religion/spirituality in your life? </Text>
+      <Text style={styles.questionText}>What is your top 1 hobbie?</Text>
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Very')}
-      >
-        <Text style={styles.buttonText}>Very</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Somewhat')}
-      >
-        <Text style={styles.buttonText}>Somewhat</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => handleSelect('Not at all')}
-      >
-        <Text style={styles.buttonText}>Not at all</Text>
-      </TouchableOpacity>
+      {hobbies.map((hobby, index) => (
+        <TouchableOpacity 
+          key={index} 
+          style={styles.button} 
+          onPress={() => handleSelect(hobby)}
+        >
+          <Text style={styles.buttonText}>{hobby}</Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
 
-export default Question31;
+export default Question22;
 
 const styles = StyleSheet.create({
   container: {

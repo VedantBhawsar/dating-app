@@ -1,46 +1,58 @@
-import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-const Question1 = () => {
+const Question34 = () => {
   const router = useRouter();
+
+  const handleSelect = (response: string) => {
+    console.log(response);
+    router.push('/onboarding/values&futureplans/Question35'); // Navigate to the next question
+  };
 
   return (
     <View style={styles.container}>
-      <TextInput 
-        placeholder="What's your full name?" 
-        style={styles.input} 
-        placeholderTextColor="#aaa"
-      />
+      <Text style={styles.questionText}>Do you believe in traditional gender roles in relationships? </Text>
+
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => router.push('/profile-setup/basic/Question2')}
+        onPress={() => handleSelect('Yes')}
       >
-        <Text style={styles.buttonText}>Next</Text>
+        <Text style={styles.buttonText}>Yes</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={() => handleSelect('No')}
+      >
+        <Text style={styles.buttonText}>No</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={() => handleSelect('Somewhat')}
+      >
+        <Text style={styles.buttonText}>Somewhat</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-export default Question1;
+export default Question34;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212', // Dark theme background
+    backgroundColor: '#fff', // Dark theme background
     paddingHorizontal: 20,
   },
-  input: {
-    width: '100%',
-    backgroundColor: '#1E1E1E', 
-    color: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#333',
-    fontSize: 16,
+  questionText: {
+    fontSize: 20,
+    color: '333',
     marginBottom: 20,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   button: {
     backgroundColor: '#FF4D67', // Tinder-like button color
@@ -49,6 +61,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     width: '100%',
+    marginBottom: 10,
     shadowColor: '#FF4D67',
     shadowOpacity: 0.5,
     shadowRadius: 10,
@@ -60,4 +73,3 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
-
