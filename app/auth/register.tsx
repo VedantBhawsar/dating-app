@@ -23,7 +23,7 @@ export default function RegisterScreen() {
     }
 
     Alert.alert("Success", "Account created!");
-    router.replace("/auth/loginScreen");
+    router.replace("/auth/login");
   };
 
   return (
@@ -60,7 +60,7 @@ export default function RegisterScreen() {
         <Text style={styles.buttonText}>Register</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.replace("/auth/loginScreen")}>
+      <TouchableOpacity onPress={() => router.replace("/auth/login")}>
         <Text style={styles.registerText}>Already have an account? Log in</Text>
       </TouchableOpacity>
     </View>
