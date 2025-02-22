@@ -13,10 +13,10 @@ const LoginScreen = () => {
   const handleLogin = async () => {
     // const isAuthenticated = email === "test@example.com" && password === "password";
     if(email && password.length > 6) {
-      await createUserWithEmailAndPassword(auth, email, password); 
+      await createUserWithEmailAndPassword(auth, email, password ) ; 
 
       if (auth.currentUser) {
-        router.push("/");
+        router.push("/onboarding/basic/intro");
       } else {
         alert("Invalid email or password");
       }

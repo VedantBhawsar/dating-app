@@ -1,21 +1,23 @@
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { useRouter } from "expo-router";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 
 const RootLayout = () => {
   const router = useRouter();
-  const auth = getAuth(); 
+  const auth = getAuth();
+
   useEffect(() => {
-    router.replace("/auth/login"); // Ensure correct case-sensitive route
+    router.replace("/onboarding/basic/intro"); // Ensure correct case-sensitive route
   }, []);
 
   return (
-    
-
-    <Stack>
-      <Stack.Screen name="(tab)" options={{ headerShown: false }} />
-      <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tab)" />
+      <Stack.Screen name="auth/login" />
+      <Stack.Screen name="auth/register" />
+      <Stack.Screen name="onboarding/basic/intro" />
+      {/* Add all onboarding screens here */}
     </Stack>
   );
 };
