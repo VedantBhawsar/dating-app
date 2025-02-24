@@ -4,6 +4,7 @@ import { AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from 'react-native';
 import {getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword} from 'firebase/auth'
+import logo from '../assets/logo.png';
 
 const LoginScreen = () => {
   const router = useRouter();
@@ -27,10 +28,7 @@ const LoginScreen = () => {
     <View style={styles.container}>
       <StatusBar backgroundColor="#FF6F00" barStyle="light-content" />
       <View style={styles.content}>
-        <Image
-          source={{ uri: "https://i.redd.it/pdo2hmsefl881.jpg" }}
-          style={styles.logo}
-        />
+      <Image source={logo} style={styles.logo} />
         <Text style={styles.title}>CONNECT</Text>
 
         <TextInput
@@ -88,7 +86,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: "bold",
     color: "white",
     marginBottom: 30,
