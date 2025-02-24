@@ -21,9 +21,9 @@ const styles = StyleSheet.create({
     elevation: 3, // Shadow effect for Android
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#FF5864',
+    color: '#FF6F00',
   },
 });
 

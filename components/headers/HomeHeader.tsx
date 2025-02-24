@@ -1,25 +1,21 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import React from 'react';
-import { FontAwesome5, Feather, MaterialIcons } from '@expo/vector-icons';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 const HomeHeader = () => {
   return (
     <View style={styles.header}>
-      {/* Left Side: Location Selector */}
-      <TouchableOpacity style={styles.locationContainer}>
-        <MaterialIcons name="location-on" size={22} color="#FF5864" />
-        <Text style={styles.locationText}>Mumbai</Text>
-        <Feather name="chevron-down" size={18} color="black" />
+      {/* Left Side: Menu Icon */}
+      <TouchableOpacity style={styles.iconButton}>
+        <FontAwesome5 name="filter" size={18} color="black" />
       </TouchableOpacity>
+      
+      {/* Center: Title */}
+      <Text style={styles.title}>Connect</Text>
 
-      {/* Center: Tinder Title (Slightly Right Shifted) */}
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>Connect</Text>
-      </View>
-
-      {/* Right Side: Filter Icon */}
-      <TouchableOpacity style={styles.filterButton}>
-        <FontAwesome5 name="sliders-h" size={18} color="white" />
+      {/* Right Side: Language Icon (Globe) */}
+      <TouchableOpacity style={styles.iconButton}>
+        <FontAwesome5 name="globe" size={18} color="black" />
       </TouchableOpacity>
     </View>
   );
@@ -38,36 +34,27 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 4,
   },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    flex: 1, // Ensures left side takes space
-  },
-  locationText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  titleContainer: {
-    position: 'absolute',
-    left: '52%', // 🔥 Shifted slightly to right
-    transform: [{ translateX: -30 }], // Adjusting for proper centering
-  },
   title: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#FF5864',
+    color: '#FF6F00',
     textAlign: 'center',
+    flex: 1,
   },
-  filterButton: {
-    backgroundColor: '#FF5864',
-    padding: 8,
-    borderRadius: 50,
+  iconButton: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    maxWidth: 40,
+    width: 40,
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
   },
 });
 

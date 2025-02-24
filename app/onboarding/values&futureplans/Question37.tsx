@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#FF4D67', // Tinder-like button color
+    backgroundColor: '#FF6F00', // Tinder-like button color
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 25,

@@ -1,11 +1,12 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import React from 'react';
 import { FontAwesome } from '@expo/vector-icons';
+import { FontAwesome6 } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window'); // 📲 Get Screen Size
 
 const SwipeCard = ({ profile }) => {
-  if (!profile) return null; // 🛑 Prevents "profile is undefined" error
+  if (!profile) return null; //  Prevents "profile is undefined" error
 
   return (
     <View style={styles.card}>
@@ -25,7 +26,7 @@ const SwipeCard = ({ profile }) => {
       {/* Action Buttons */}
       <View style={styles.actions}>
         <TouchableOpacity style={[styles.iconButton, { backgroundColor: '#FF5864' }]}>
-          <FontAwesome name="times" size={24} color="white" />
+          <FontAwesome6 name="heart-crack" size={24} color="white" />
         </TouchableOpacity>
         <TouchableOpacity style={[styles.iconButton, { backgroundColor: '#6A0DAD' }]}>
           <FontAwesome name="heart" size={24} color="white" />

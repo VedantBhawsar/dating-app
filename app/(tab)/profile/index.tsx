@@ -63,12 +63,12 @@ const ProfileScreen = () => {
     <ScrollView contentContainerStyle={styles.container}>
       {/* Edit Button Positioned at the Top Left */}
       <TouchableOpacity style={styles.editButtonTopLeft} onPress={handleEditClick}>
-        <Ionicons name="create-outline" size={22} color="black" />
+        <Ionicons name="create-outline" size={24} color="black" />
       </TouchableOpacity>
 
       <View style={styles.headerWrapper}>
         <TouchableOpacity style={styles.settingsButton}>
-          <Ionicons name="settings-outline" size={28} color="black" />
+          <Ionicons name="settings-outline" size={24} color="black" />
         </TouchableOpacity>
         <Image
           source={{ uri: 'https://plus.unsplash.com/premium_photo-1673734626655-0c1dc4be0e9c?q=80&w=1887' }}
@@ -165,34 +165,44 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     left: 20,
+    backgroundColor: '#fff',
     padding: 10,
-    backgroundColor: '#FFF',
-    borderRadius: 50,
-    zIndex: 10,
+    borderRadius: 25, // Same as the original button
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 5, // Slightly adjusted for consistency
     elevation: 2,
+    zIndex: 10,
   },
+  
   settingsButton: {
     position: 'absolute',
     top: 20,
     right: 20,
+    backgroundColor: '#fff',
     padding: 10,
-    backgroundColor: '#FFF',
-    borderRadius: 50, // Added the same borderRadius as the edit button
-    zIndex: 10,
+    borderRadius: 25, // Same as the original button
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 5,
     elevation: 2,
+    zIndex: 10,
   },
+  
   headerWrapper: {
     width: '100%',
     height: 250,
-    backgroundColor: '#EEE',
+    backgroundColor: '#',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative'
@@ -202,7 +212,8 @@ const styles = StyleSheet.create({
     height: 140,
     borderRadius: 70,
     borderWidth: 4,
-    borderColor: '#000'
+    borderColor: '#000',
+    marginTop: 50
   },
   name: {
     fontSize: 24,

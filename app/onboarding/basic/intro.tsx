@@ -12,20 +12,19 @@ const Intro = () => {
     <View style={styles.container}>
       <StatusBar backgroundColor="white" barStyle="dark-content" />
 
-      {/* Enlarged Rotated Heart SVG */}
       <View style={styles.svgContainer}>
-        <Svg width={350} height={350} viewBox="0 0 200 200">
-          <Path
-            d="M100 180 C30 110 -20 50 40 20 C80 0 140 40 100 100 C100 40 90 0 160 20 C220 50 170 110 100 180"
-            stroke="#FF6F00"
-            strokeWidth="3"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            transform="rotate(-18, 100, 100)"  // Rotating left by 18 degrees
-          />
-        </Svg>
-      </View>
+  <Svg width={350} height={350} viewBox="0 0 200 200">
+    <Path
+      d="M100 180 C30 110 -20 50 40 20 C80 0 100 40 100 80 C90 140 70 160 00 190 M100 180 C170 110 220 50 160 20 C110 0 90 90 120 130 C130 160 170 180 190 200"
+      stroke="#FF6F00"
+      strokeWidth="3"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      transform="rotate(-18, 100, 100)"
+    />
+  </Svg>
+</View>
 
       {/* Text Section */}
       <View style={styles.textContainer}>

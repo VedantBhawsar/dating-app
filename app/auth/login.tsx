@@ -25,7 +25,7 @@ const LoginScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor="#FF1647" barStyle="light-content" />
+      <StatusBar backgroundColor="#FF6F00" barStyle="light-content" />
       <View style={styles.content}>
         <Image
           source={{ uri: "https://i.redd.it/pdo2hmsefl881.jpg" }}
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FF1647",
+    backgroundColor: "#FF6F00",
   },
   content: {
     alignItems: "center",

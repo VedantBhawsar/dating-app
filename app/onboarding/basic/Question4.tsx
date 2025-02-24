@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   optionButton: {
-    backgroundColor: '#FF4D67', // Button color (similar to previous questions)
+    backgroundColor: '#FF6F00', // Button color (similar to previous questions)
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 25,
