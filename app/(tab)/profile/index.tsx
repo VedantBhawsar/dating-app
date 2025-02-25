@@ -7,7 +7,7 @@ const ProfileScreen = () => {
   const [editField, setEditField] = useState(null);
   const [selectedField, setSelectedField] = useState(null);
   const [profileData, setProfileData] = useState({
-    name: 'Dipraj Rajput',
+    name: 'Sam ALtman',
     email: 'dipraj@example.com',
     phone: '9898712132',
     education: 'B.E. Computer Science',

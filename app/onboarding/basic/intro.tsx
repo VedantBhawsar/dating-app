@@ -12,19 +12,20 @@ const Intro = () => {
     <View style={styles.container}>
       <StatusBar backgroundColor="white" barStyle="dark-content" />
 
+      {/* Bigger Responsive SVG */}
       <View style={styles.svgContainer}>
-  <Svg width={350} height={350} viewBox="0 0 200 200">
-    <Path
-      d="M100 180 C30 110 -20 50 40 20 C80 0 100 40 100 80 C90 140 70 160 00 190 M100 180 C170 110 220 50 160 20 C110 0 90 90 120 130 C130 160 170 180 190 200"
-      stroke="#FF6F00"
-      strokeWidth="3"
-      fill="none"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      transform="rotate(-18, 100, 100)"
-    />
-  </Svg>
-</View>
+        <Svg width={width} height={height * 0.5} viewBox="0 0 200 200">
+          <Path
+            d="M100 180 C30 110 -20 30 50 10 C110 00 100 70 100 70 C90 140 00 110 -90 170 M100 180 C190 110 220 50 160 20 C110 0 90 90 130 140 C150 170 170 180 200 190"
+            stroke="#FF6F00"
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            transform="rotate(-18, 100, 100)"
+          />
+        </Svg>
+      </View>
 
       {/* Text Section */}
       <View style={styles.textContainer}>
@@ -52,9 +53,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F8F8', padding: 20, justifyContent: 'flex-end' },
   svgContainer: {
     position: 'absolute',
-    top: height * 0.1,
-    left: width * 0.5 - 175,
-  },
+    top: height * 0.05,
+    left: width * 0.03, // Slightly shifted right
+    width: width,
+    alignItems: 'center',
+  },  
   textContainer: { paddingHorizontal: 20, paddingBottom: 70 },
   title: { 
     fontSize: 44,  
@@ -62,7 +65,7 @@ const styles = StyleSheet.create({
     marginBottom: 12, 
     textAlign: 'left',
     letterSpacing: -0.5, 
-    lineHeight: 44, // Adjust line spacing
+    lineHeight: 44, 
   },  
   subtitle: {
     fontSize: 18,
@@ -82,7 +85,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 5,
-    elevation: 5, // For Android shadow
+    elevation: 5, 
   },
   buttonText: {
     color: '#FFF',
