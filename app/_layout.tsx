@@ -8,7 +8,7 @@ const RootLayout = () => {
   const auth = getAuth();
 
   useEffect(() => {
-    router.replace("/auth/login"); // Ensure correct case-sensitive route
+    router.replace("/auth/login"); // LOgin page set as default
   }, []);
 
   return (
