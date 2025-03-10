@@ -8,7 +8,7 @@ const RootLayout = () => {
   const auth = getAuth();
 
   useEffect(() => {
-    router.replace("/"); // LOgin page set as default
+    router.replace("/auth/login"); // LOgin page set as default
   }, []);
 
   return (
