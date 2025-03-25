@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from "reac
 import { AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from 'react-native';
-import {getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, fed} from 'firebase/auth'
+import {getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,} from 'firebase/auth'
 
 const LoginScreen = () => {
   const router = useRouter();
