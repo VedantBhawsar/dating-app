@@ -6,7 +6,7 @@ const Question36 = () => {
 
   const handleSelect = (response: string) => {
     console.log(response);
-    router.push('/onboarding/values&futureplans/Question37'); // Navigate to the next question
+    router.push('/onboarding/verification'); // Navigate to the next question
   };
 
   return (
