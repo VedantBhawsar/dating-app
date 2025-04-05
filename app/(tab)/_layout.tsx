@@ -1,13 +1,38 @@
 import { Tabs } from 'expo-router';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import React from 'react';
-import { StyleSheet } from 'react-native';
+import { FontAwesome } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Keyboard } from 'react-native';
 
-const TabRoot = () => {
+export default function TabLayout() {
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
+
   return (
     <Tabs screenOptions={{
       headerShown: false,
-      tabBarStyle: styles.tabBar,
+      tabBarStyle: [
+        styles.tabBar,
+        { display: keyboardVisible ? 'none' : 'flex' }
+      ],
       tabBarLabelStyle: styles.label,
       tabBarActiveTintColor: '#FF6F00',
       tabBarInactiveTintColor: '#A0A0A0',
@@ -27,22 +52,22 @@ const TabRoot = () => {
         }} 
       />
       <Tabs.Screen 
-        name="chats" 
+        name="chat" 
         options={{
-          title: "Message",
-          tabBarIcon: ({ color }) => <FontAwesome size={24} name="comment-o" color={color} />, 
+          title: "Messages",
+          tabBarIcon: ({ color }) => <FontAwesome size={24} name="comment-o" color={color} />,
         }} 
       />
       <Tabs.Screen 
-        name="profile/index" 
+        name="profile" 
         options={{
           title: "Profile",
-          tabBarIcon: ({ color }) => <FontAwesome size={24} name="user-circle-o" color={color} />, 
+          tabBarIcon: ({ color }) => <FontAwesome size={24} name="user-circle-o" color={color} />,
         }} 
       />
     </Tabs>
   );
-};
+}
 
 const styles = StyleSheet.create({
   tabBar: {
@@ -61,5 +86,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-export default TabRoot;
