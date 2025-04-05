@@ -1,34 +1,29 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, FlatList, SafeAreaView } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { FontAwesome } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, FlatList, SafeAreaView, StatusBar } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { chats } from '../../../data/chats';
 import { messages } from '../../../data/messages';
 import Message from '../../../components/chat/Message';
-
-function HeaderTitle() {
-  const { id } = useLocalSearchParams();
-  const chat = chats.find((c) => c.id === id);
-
-  return (
-    <View style={styles.headerTitleContainer}>
-      <Image source={{ uri: chat?.image }} style={styles.profileImage} />
-      <Text style={styles.headerTitle}>{chat?.name}</Text>
-    </View>
-  );
-}
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
   const [message, setMessage] = useState('');
   const chat = chats.find((c) => c.id === id);
   const chatMessages = messages[id as string] || [];
+  const router = useRouter();
 
   const handleSend = () => {
     if (message.trim()) {
       // Handle sending message here
       setMessage('');
     }
+  };
+
+  const handleBack = () => {
+    router.navigate({
+      pathname: "/(tab)/chat",
+    });
   };
 
   const renderMessage = ({ item }) => (
@@ -42,18 +37,21 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerTitle: () => <HeaderTitle />,
-          headerTitleAlign: 'left',
-          headerShadowVisible: false,
-          headerStyle: {
-            backgroundColor: '#fff',
-          },
-          headerBackTitle: '',
-        }}
-      />
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={handleBack}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        
+        <View style={styles.headerTitleContainer}>
+          <Image source={{ uri: chat?.image }} style={styles.profileImage} />
+          <Text style={styles.headerTitle}>{chat?.name}</Text>
+        </View>
+      </View>
+
       <View style={styles.messagesContainer}>
         {chatMessages.length > 0 ? (
           <FlatList
@@ -70,6 +68,7 @@ export default function ChatScreen() {
           </View>
         )}
       </View>
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
@@ -102,6 +101,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginLeft: 8,
+  },
+  profileImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 4,
   },
   messagesContainer: {
     flex: 1,
@@ -151,22 +180,5 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.7,
-  },
-  headerTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: -16,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginLeft: 12,
-  },
-  profileImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f0f0f0',
   },
 }); 

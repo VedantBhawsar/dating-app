@@ -6,10 +6,11 @@ import {
   Image, 
   Text, 
   TouchableOpacity, 
-  Dimensions 
+  Dimensions
 } from 'react-native';
 import React from 'react';
 import MatchesHeader from '../../components/headers/MatchesHeader';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 const IMAGE_SIZE = width * 0.33; // Adjusted for better spacing
@@ -29,8 +30,26 @@ const matches = [
 ];
 
 const MatchesScreen = () => {
+  const router = useRouter();
+
+  const handleProfilePress = (match) => {
+    // Navigate to profile page with match data
+    router.push({
+      pathname: `/profile/${match.id}`,
+      params: { 
+        id: match.id, 
+        name: match.name,
+        image: match.image,
+        status: match.status
+      }
+    });
+  };
+
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card}
+      onPress={() => handleProfilePress(item)}
+    >
       <Image source={{ uri: item.image }} style={[styles.image, { width: IMAGE_SIZE, height: IMAGE_SIZE }]} />
       <Text style={styles.name}>{item.name}</Text>
       <View style={styles.statusContainer}>

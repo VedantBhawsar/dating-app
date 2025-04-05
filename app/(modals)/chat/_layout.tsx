@@ -5,18 +5,8 @@ export default function ChatModalLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
-        presentation: 'modal',
-        animation: 'slide_from_bottom',
-        headerStyle: {
-          backgroundColor: '#fff',
-        },
-        contentStyle: {
-          backgroundColor: '#fff',
-        },
-        tabBarStyle: {
-          display: 'none'
-        }
+        headerShown: false,
+        animation: 'slide_from_right'
       }}
     />
   );

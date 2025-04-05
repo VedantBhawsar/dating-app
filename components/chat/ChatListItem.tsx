@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 
 interface ChatListItemProps {
   id: string;
@@ -12,28 +12,31 @@ interface ChatListItemProps {
 }
 
 export default function ChatListItem({ id, name, message, image, time, unreadCount }: ChatListItemProps) {
+  const router = useRouter();
+  
   return (
-    <Link href={`/(modals)/chat/${id}`} asChild>
-      <TouchableOpacity style={styles.container}>
-        <Image source={{ uri: image }} style={styles.avatar} />
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.name}>{name}</Text>
-            {time && <Text style={styles.time}>{time}</Text>}
-          </View>
-          <View style={styles.messageContainer}>
-            <Text style={styles.message} numberOfLines={1}>
-              {message}
-            </Text>
-            {unreadCount ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
-              </View>
-            ) : null}
-          </View>
+    <TouchableOpacity 
+      style={styles.container} 
+      onPress={() => router.push(`/(modals)/chat/${id}`)}
+    >
+      <Image source={{ uri: image }} style={styles.avatar} />
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.name}>{name}</Text>
+          {time && <Text style={styles.time}>{time}</Text>}
         </View>
-      </TouchableOpacity>
-    </Link>
+        <View style={styles.messageContainer}>
+          <Text style={styles.message} numberOfLines={1}>
+            {message}
+          </Text>
+          {unreadCount ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
