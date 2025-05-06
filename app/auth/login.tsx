@@ -1,27 +1,31 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Linking, TouchableNativeFeedback } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from 'react-native';
-import {getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,} from 'firebase/auth'
+import api from '../../api';
 
 const LoginScreen = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState(""); const auth = getAuth()
+  const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    // const isAuthenticated = email === "test@example.com" && password === "password";
-    if(email && password.length > 6) {
-      await createUserWithEmailAndPassword(auth, email, password ) ; 
+    try {
+      const response = await api.get("/auth/google");
 
-      if (auth.currentUser) {
-        router.push("/onboarding/basic/intro");
+      const data = response.data;
+      console.log("data", data);
+
+      if (data && data.url) {
+        Linking.openURL(data.url);
       } else {
-        alert("Invalid email or password");
+        console.log("No URL received from backend");
       }
-    };
-  }
+    } catch (error: any) {
+      console.log(error.message);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -33,7 +37,7 @@ const LoginScreen = () => {
         />
         <Text style={styles.title}>CONNECT</Text>
 
-        <TextInput
+        {/* <TextInput
           style={styles.input}
           placeholder="Email"
           placeholderTextColor="#ddd"
@@ -47,25 +51,25 @@ const LoginScreen = () => {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
-        />
-
+        /> */}
+{/* 
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Sign in</Text>
         </TouchableOpacity>
 
-        <Text style={styles.orText}>OR</Text>
+        <Text style={styles.orText}>OR</Text> */}
 
         <TouchableOpacity style={styles.googleButton} onPress={handleLogin}>
           <AntDesign name="google" size={24} color="white" style={styles.icon} />
           <Text style={styles.googleButtonText}>Sign in with Google</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.registerButton}
           onPress={() => router.push("/auth/register")}
         >
           <Text style={styles.registerText}>New User? Register</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </View>
   );

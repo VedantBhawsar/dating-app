@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter, useNavigation } from "expo-router";
-import {auth} from '@/app/firebase'
 
 export default function RegisterScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  console.log(auth.currentUser)
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
