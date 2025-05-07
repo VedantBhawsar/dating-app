@@ -72,7 +72,7 @@ const MatchesScreen = () => {
       <MatchesHeader />
       <Button
         title="Add Match"
-        onPress={() => router.push('/onboarding/lifestyle&habits/Question16')}
+        onPress={() => router.push('/onboarding/personality&interest/Question21')}
       />
       <View style={styles.content}>
         <FlatList
