@@ -236,7 +236,7 @@ export const profileService = {
     }
   },
 
-  updateRelationshipPrefs: async (relationshipPrefs: {
+  updateRelationshipPreferences: async (relationshipPrefs: {
     lookingFor?: string[];
     ageRangeMin?: number;
     ageRangeMax?: number;
