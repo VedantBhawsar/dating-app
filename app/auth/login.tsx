@@ -1,29 +1,67 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Linking, TouchableNativeFeedback } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Linking, ActivityIndicator, Alert } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from 'react-native';
-import api from '../../api';
+import { authService } from "../../services/api";
 
 const LoginScreen = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async () => {
+    // Validate inputs
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+
     try {
-      const response = await api.get("/auth/google");
+      setLoading(true);
+      setError("");
+      
+      const response = await authService.login({
+        email,
+        password
+      });
 
-      const data = response.data;
-      console.log("data", data);
+      console.log("Login successful", response);
+      
+      // Check if we received tokens
+      if (response.accessToken && response.refreshToken) {
+        // Navigate to the main app after successful login
+        router.replace("/onboarding/basic/intro");
+      } else {
+        // If we don't have tokens, show an error
+        setError("Login successful but no authentication tokens received");
+        Alert.alert("Login Issue", "Authentication problem. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err?.message || "Login failed. Please check your credentials.");
+      Alert.alert("Login Failed", err?.message || "Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleGoogleLogin = async () => {
+    try {
+      const response = await fetch("https://f143-223-185-38-78.ngrok-free.app/api/auth/google");
+      const data = await response.json();
+      
       if (data && data.url) {
         Linking.openURL(data.url);
       } else {
         console.log("No URL received from backend");
+        Alert.alert("Error", "Failed to initiate Google login");
       }
     } catch (error: any) {
       console.log(error.message);
+      Alert.alert("Error", "Failed to connect to Google login service");
     }
   };
 
@@ -37,12 +75,16 @@ const LoginScreen = () => {
         />
         <Text style={styles.title}>CONNECT</Text>
 
-        {/* <TextInput
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <TextInput
           style={styles.input}
           placeholder="Email"
           placeholderTextColor="#ddd"
           value={email}
           onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
         />
         <TextInput
           style={styles.input}
@@ -51,25 +93,33 @@ const LoginScreen = () => {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
-        /> */}
-{/* 
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Sign in</Text>
+        /> 
+
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FF1647" />
+          ) : (
+            <Text style={styles.buttonText}>Sign in</Text>
+          )}
         </TouchableOpacity>
 
-        <Text style={styles.orText}>OR</Text> */}
+        <Text style={styles.orText}>OR</Text> 
 
-        <TouchableOpacity style={styles.googleButton} onPress={handleLogin}>
+        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
           <AntDesign name="google" size={24} color="white" style={styles.icon} />
           <Text style={styles.googleButtonText}>Sign in with Google</Text>
         </TouchableOpacity>
 
-        {/* <TouchableOpacity
+        <TouchableOpacity
           style={styles.registerButton}
           onPress={() => router.push("/auth/register")}
         >
           <Text style={styles.registerText}>New User? Register</Text>
-        </TouchableOpacity> */}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -153,6 +203,11 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: 10,
+  },
+  errorText: {
+    color: "#ffcccc",
+    marginBottom: 15,
+    textAlign: "center",
   }
 });
 

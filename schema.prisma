@@ -1,0 +1,393 @@
+// This is your Prisma schema file for MongoDB
+// Learn more about Prisma: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// User model - core user account information
+model User {
+  id             String     @id @default(auto()) @map("_id") @db.ObjectId
+  email          String     @unique
+  hashedPassword String
+  phoneNumber    String?
+  isVerified     Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  lastActive     DateTime   @default(now())
+  role           UserRole   @default(USER)
+  status         UserStatus @default(ACTIVE)
+
+  // Relations
+  profile           Profile?
+  basicInfo         BasicInfo?
+  casteInfo         CasteInfo?
+  occupationInfo    OccupationInfo?
+  lifestyleInfo     LifestyleInfo?
+  personalityInfo   PersonalityInfo?
+  relationshipPrefs RelationshipPreference?
+  valuesPlan        ValuesPlan?
+
+  // Chat and matching relations
+  sentMatches       Match[]              @relation("SentMatches")
+  receivedMatches   Match[]              @relation("ReceivedMatches")
+  participatedChats ChatParticipant[]
+  sentMessages      Message[]
+  readReceipts      MessageReadReceipt[]
+
+  // For tracking likes and blocks
+  likedUsers     Like[]  @relation("UserWhoLiked")
+  likedByUsers   Like[]  @relation("UserWhoIsLiked")
+  blockedUsers   Block[] @relation("BlockedBy")
+  blockedByUsers Block[] @relation("Blocked")
+
+  // Media uploads
+  mediaUploads Media[]
+
+  // For tracking online status
+  sessions UserSession[]
+
+  // Notifications
+  notifications Notification[]
+}
+
+enum UserRole {
+  USER
+  PREMIUM
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+// User sessions - for handling online status and auth
+model UserSession {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  token      String   @unique
+  device     String?
+  ipAddress  String?
+  lastActive DateTime @default(now())
+  expiresAt  DateTime
+  isValid    Boolean  @default(true)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Profile - main profile information
+model Profile {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @unique @db.ObjectId
+  displayName       String
+  bio               String?
+  completionScore   Float    @default(0) // Percentage of profile completed
+  lastUpdated       DateTime @updatedAt
+  isHidden          Boolean  @default(false)
+  profilePictureUrl String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Basic Information - first onboarding section
+model BasicInfo {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @unique @db.ObjectId
+  firstName     String?
+  lastName      String?
+  gender        String?
+  birthDate     DateTime?
+  location      Json? // {country, state, city, coordinates}
+  height        Float?
+  maritalStatus String?
+  children      String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Caste & Community - second onboarding section
+model CasteInfo {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String  @unique @db.ObjectId
+  religion     String?
+  caste        String?
+  subCaste     String?
+  motherTongue String?
+  community    String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Salary & Occupation - third onboarding section
+model OccupationInfo {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String  @unique @db.ObjectId
+  education     String?
+  highestDegree String?
+  occupation    String?
+  employedIn    String?
+  companyName   String?
+  jobTitle      String?
+  annualIncome  String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Lifestyle & Habits - fourth onboarding section
+model LifestyleInfo {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @unique @db.ObjectId
+  diet              String?
+  smoking           String?
+  drinking          String?
+  livingArrangement String?
+  hasDisability     Boolean?
+  disabilityDetails String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Personality & Interest - fifth onboarding section
+model PersonalityInfo {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @unique @db.ObjectId
+  hobbies           String[]
+  interests         String[]
+  personalityTraits String[]
+  musicTaste        String[]
+  movieTaste        String[]
+  sportsInterest    String[]
+  travelStyle       String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Relationship Preferences - sixth onboarding section
+model RelationshipPreference {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId               String   @unique @db.ObjectId
+  lookingFor           String[] // relationship types
+  ageRangeMin          Int?
+  ageRangeMax          Int?
+  heightRangeMin       Float?
+  heightRangeMax       Float?
+  distanceRange        Int? // in km/miles
+  preferredReligion    String[]
+  preferredCaste       String[]
+  educationPreference  String[]
+  occupationPreference String[]
+  incomePreference     String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Values & Future Plans - seventh onboarding section
+model ValuesPlan {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @unique @db.ObjectId
+  familyValues     String?
+  religiousBeliefs String?
+  politicalViews   String?
+  wantsChildren    String?
+  futureGoals      String[]
+  marriagePlans    String?
+  relocateWilling  Boolean?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Media upload model for profile pictures, chat images, etc.
+model Media {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String    @db.ObjectId
+  url        String
+  type       MediaType
+  isPublic   Boolean   @default(false)
+  uploadedAt DateTime  @default(now())
+  caption    String?
+  messageId  String?   @db.ObjectId
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id])
+}
+
+enum MediaType {
+  PROFILE_PICTURE
+  CHAT_IMAGE
+  DOCUMENT
+  VIDEO
+}
+
+// Match model - handles connections between users
+model Match {
+  id         String      @id @default(auto()) @map("_id") @db.ObjectId
+  senderId   String      @db.ObjectId
+  receiverId String      @db.ObjectId
+  status     MatchStatus @default(PENDING)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  matchScore Float? // Algorithm-generated compatibility score
+  matchNotes String? // Optional notes about why matched
+  chatRoomId String?     @unique @db.ObjectId
+
+  // Relations
+  sender   User      @relation("SentMatches", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User      @relation("ReceivedMatches", fields: [receiverId], references: [id], onDelete: Cascade)
+  chatRoom ChatRoom? @relation(fields: [chatRoomId], references: [id])
+}
+
+enum MatchStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+// Like model - for tracking user interests before matching
+model Like {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  fromUserId String   @db.ObjectId
+  toUserId   String   @db.ObjectId
+  createdAt  DateTime @default(now())
+
+  // Relations
+  fromUser User @relation("UserWhoLiked", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("UserWhoIsLiked", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+}
+
+// Block model - for user blocking functionality
+model Block {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  blockerId String   @db.ObjectId
+  blockedId String   @db.ObjectId
+  reason    String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  blocker User @relation("BlockedBy", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+
+// Chat room model - for messaging
+model ChatRoom {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastActivityAt DateTime @default(now())
+  isActive       Boolean  @default(true)
+
+  // Relations
+  participants ChatParticipant[]
+  messages     Message[]
+  match        Match?
+}
+
+// Chat participant model - for users in a chat
+model ChatParticipant {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  chatRoomId String   @db.ObjectId
+  userId     String   @db.ObjectId
+  joinedAt   DateTime @default(now())
+  lastReadAt DateTime @default(now())
+  isMuted    Boolean  @default(false)
+
+  // Relations
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatRoomId, userId])
+}
+
+// Message model - for chat messages
+model Message {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  chatRoomId  String        @db.ObjectId
+  senderId    String        @db.ObjectId
+  content     String
+  messageType MessageType   @default(TEXT)
+  sentAt      DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  status      MessageStatus @default(SENT)
+
+  // Relations
+  chatRoom     ChatRoom             @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender       User                 @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  readReceipts MessageReadReceipt[]
+  media        Media[]
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  DOCUMENT
+  LOCATION
+  AUDIO
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+// Read receipt model - for tracking message read status
+model MessageReadReceipt {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  messageId String   @db.ObjectId
+  userId    String   @db.ObjectId
+  readAt    DateTime @default(now())
+
+  // Relations
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+}
+
+// Notification model - for system notifications
+model Notification {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String           @db.ObjectId
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  data      Json? // Additional notification data
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NotificationType {
+  MATCH
+  MESSAGE
+  LIKE
+  PROFILE_VIEW
+  SYSTEM
+}

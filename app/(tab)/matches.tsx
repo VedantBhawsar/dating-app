@@ -6,17 +6,25 @@ import {
   Image, 
   Text, 
   TouchableOpacity, 
-  Dimensions
+  Dimensions,
+  Button
 } from 'react-native';
 import React from 'react';
 import MatchesHeader from '../../components/headers/MatchesHeader';
 import { useRouter } from 'expo-router';
 
+interface Match {
+  id: string;
+  name: string;
+  image: string;
+  status: 'online' | 'offline';
+}
+
 const { width } = Dimensions.get('window');
 const IMAGE_SIZE = width * 0.33; // Adjusted for better spacing
 const CARD_WIDTH = width * 0.45; // Responsive card width
 
-const matches = [
+const matches: Match[] = [
   { id: '1', name: 'Ethan', image: 'https://plus.unsplash.com/premium_photo-1671656349322-41de944d259b?q=80&w=500&h=500&fit=crop', status: 'online' },
   { id: '2', name: 'Liam', image: 'https://plus.unsplash.com/premium_photo-1670282393309-70fd7f8eb1ef?q=80&w=500&h=500&fit=crop', status: 'offline' },
   { id: '3', name: 'Emily', image: 'https://plus.unsplash.com/premium_photo-1673792686302-7555a74de717?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', status: 'online' },
@@ -32,10 +40,10 @@ const matches = [
 const MatchesScreen = () => {
   const router = useRouter();
 
-  const handleProfilePress = (match) => {
+  const handleProfilePress = (match: Match) => {
     // Navigate to profile page with match data
     router.push({
-      pathname: `/profile/${match.id}`,
+      pathname: "/(tab)/profile",
       params: { 
         id: match.id, 
         name: match.name,
@@ -45,7 +53,7 @@ const MatchesScreen = () => {
     });
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }: { item: Match }) => (
     <TouchableOpacity 
       style={styles.card}
       onPress={() => handleProfilePress(item)}
@@ -62,6 +70,10 @@ const MatchesScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <MatchesHeader />
+      <Button
+        title="Add Match"
+        onPress={() => router.push('/onboarding/lifestyle&habits/Question16')}
+      />
       <View style={styles.content}>
         <FlatList
           data={matches}
