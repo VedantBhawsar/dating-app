@@ -161,7 +161,7 @@ const LifestyleInfoScreen = () => {
       await profileService.updateLifestyleInfo(payload); 
       
       console.log('Lifestyle info update successful. Navigating.');
-      router.push('/onboarding/lifestyle&habits/Question17'); // Navigate to the next onboarding step (e.g., interests)
+      router.push('/onboarding/personality&interest/Question21'); // Navigate to the next onboarding step (e.g., interests)
 
     } catch (err: any) {
       console.error('Error submitting lifestyle info:', err);

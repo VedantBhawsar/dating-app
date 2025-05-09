@@ -15,7 +15,7 @@ const RootLayout = () => {
         
         if (token) {
           // User is logged in, redirect to main app
-          router.replace("/onboarding/basic/intro");
+          router.replace("/(tab)");
         } else {
           // No token found, redirect to login
           router.replace("/auth/login");

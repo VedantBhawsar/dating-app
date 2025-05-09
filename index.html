@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Test Client</title>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Dating App Socket.IO Test Client</h1>
+    
+    <div id="auth-section">
+        <h2>Authentication</h2>
+        <div>
+            <label for="token">JWT Token:</label>
+            <input type="text" id="token" size="50" placeholder="Paste your JWT token here">
+            <button id="connect-btn">Connect</button>
+        </div>
+        <div id="connection-status">Status: Disconnected</div>
+    </div>
+
+    <hr>
+
+    <div id="user-section" style="display: none;">
+        <h2>Your User ID: <span id="user-id">Not connected</span></h2>
+    </div>
+
+    <hr>
+
+    <div id="chat-section" style="display: none;">
+        <h2>Chat Testing</h2>
+        
+        <div>
+            <label for="chat-id">Chat Room ID:</label>
+            <input type="text" id="chat-id" placeholder="Enter chat room ID">
+            <button id="join-chat-btn">Join Chat</button>
+        </div>
+        
+        <div>
+            <h3>Send Message</h3>
+            <div>
+                <label for="message-content">Message:</label>
+                <input type="text" id="message-content" placeholder="Type your message">
+                <select id="message-type">
+                    <option value="TEXT">Text</option>
+                    <option value="IMAGE">Image</option>
+                </select>
+                <button id="send-btn" disabled>Send Message</button>
+            </div>
+            <div>
+                <button id="typing-btn" disabled>Trigger Typing Indicator</button>
+            </div>
+        </div>
+        
+        <div>
+            <h3>Mark Messages as Read</h3>
+            <div>
+                <label for="message-ids">Message IDs (comma separated):</label>
+                <input type="text" id="message-ids" placeholder="e.g. id1,id2,id3">
+                <button id="mark-read-btn" disabled>Mark as Read</button>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <div id="events-section">
+        <h2>Events Log</h2>
+        <button id="clear-logs-btn">Clear Logs</button>
+        <div id="events-log" style="height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-top: 10px;"></div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const tokenInput = document.getElementById('token');
+        const connectBtn = document.getElementById('connect-btn');
+        const connectionStatus = document.getElementById('connection-status');
+        const userSection = document.getElementById('user-section');
+        const userId = document.getElementById('user-id');
+        const chatSection = document.getElementById('chat-section');
+        const chatIdInput = document.getElementById('chat-id');
+        const joinChatBtn = document.getElementById('join-chat-btn');
+        const messageContentInput = document.getElementById('message-content');
+        const messageTypeSelect = document.getElementById('message-type');
+        const sendBtn = document.getElementById('send-btn');
+        const typingBtn = document.getElementById('typing-btn');
+        const messageIdsInput = document.getElementById('message-ids');
+        const markReadBtn = document.getElementById('mark-read-btn');
+        const eventsLog = document.getElementById('events-log');
+        const clearLogsBtn = document.getElementById('clear-logs-btn');
+
+        // Variables
+        let socket;
+        let currentChatId = null;
+
+        // Helper function to log events
+        function logEvent(event, data) {
+            const timestamp = new Date().toISOString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>${timestamp} - ${event}:</strong> ${typeof data === 'object' ? JSON.stringify(data, null, 2) : data}`;
+            eventsLog.appendChild(logEntry);
+            eventsLog.scrollTop = eventsLog.scrollHeight;
+        }
+
+        // Connect to socket server
+        connectBtn.addEventListener('click', () => {
+            const token = tokenInput.value.trim();
+            
+            if (!token) {
+                logEvent('Error', 'Please enter a JWT token');
+                return;
+            }
+
+            // Disconnect existing socket if any
+            if (socket) {
+                socket.disconnect();
+            }
+
+            connectionStatus.textContent = 'Status: Connecting...';
+            logEvent('Connection', 'Attempting to connect...');
+
+            // Connect to server with token auth
+            socket = io('http://localhost:5000', {
+                auth: { token }
+            });
+
+            // Connection event handlers
+            socket.on('connect', () => {
+                connectionStatus.textContent = 'Status: Connected';
+                logEvent('Connection', 'Connected successfully');
+                
+                // Get user ID from socket (this assumes your backend sets it in the handshake)
+                // Since we can't directly get the userId from the socket on the client, we'll extract it from the first event
+                socket.emit('get-user-info');
+                
+                // Show user and chat sections
+                userSection.style.display = 'block';
+                chatSection.style.display = 'block';
+            });
+
+            socket.on('connect_error', (error) => {
+                connectionStatus.textContent = `Status: Connection Error - ${error.message}`;
+                logEvent('Connection Error', error.message);
+                userSection.style.display = 'none';
+                chatSection.style.display = 'none';
+            });
+
+            socket.on('disconnect', (reason) => {
+                connectionStatus.textContent = `Status: Disconnected - ${reason}`;
+                logEvent('Disconnection', reason);
+                userSection.style.display = 'none';
+                chatSection.style.display = 'none';
+                sendBtn.disabled = true;
+                typingBtn.disabled = true;
+                markReadBtn.disabled = true;
+                currentChatId = null;
+            });
+
+            // Chat event handlers
+            socket.on('new-message', (data) => {
+                logEvent('New Message', data);
+            });
+
+            socket.on('user-typing', (data) => {
+                logEvent('User Typing', data);
+            });
+
+            socket.on('messages-read', (data) => {
+                logEvent('Messages Read', data);
+            });
+
+            socket.on('new-notification', (data) => {
+                logEvent('New Notification', data);
+            });
+
+            socket.on('error', (data) => {
+                logEvent('Error', data);
+            });
+
+            // Custom event to receive user info
+            socket.on('user-info', (data) => {
+                userId.textContent = data.userId;
+                logEvent('User Info', data);
+            });
+        });
+
+        // Join chat room
+        joinChatBtn.addEventListener('click', () => {
+            const chatId = chatIdInput.value.trim();
+            
+            if (!socket || !socket.connected) {
+                logEvent('Error', 'Not connected to server');
+                return;
+            }
+            
+            if (!chatId) {
+                logEvent('Error', 'Please enter a chat room ID');
+                return;
+            }
+
+            socket.emit('join-chat', chatId);
+            logEvent('Join Chat', `Attempting to join chat: ${chatId}`);
+            currentChatId = chatId;
+            
+            // Enable chat buttons
+            sendBtn.disabled = false;
+            typingBtn.disabled = false;
+            markReadBtn.disabled = false;
+        });
+
+        // Send message
+        sendBtn.addEventListener('click', () => {
+            const content = messageContentInput.value.trim();
+            const messageType = messageTypeSelect.value;
+            
+            if (!socket || !socket.connected) {
+                logEvent('Error', 'Not connected to server');
+                return;
+            }
+            
+            if (!currentChatId) {
+                logEvent('Error', 'Please join a chat room first');
+                return;
+            }
+            
+            if (!content) {
+                logEvent('Error', 'Please enter a message');
+                return;
+            }
+
+            socket.emit('send-message', {
+                chatId: currentChatId,
+                content,
+                messageType
+            });
+            
+            logEvent('Send Message', `Sent "${content}" to chat ${currentChatId}`);
+            messageContentInput.value = '';
+        });
+
+        // Trigger typing indicator
+        typingBtn.addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                logEvent('Error', 'Not connected to server');
+                return;
+            }
+            
+            if (!currentChatId) {
+                logEvent('Error', 'Please join a chat room first');
+                return;
+            }
+
+            socket.emit('typing', currentChatId);
+            logEvent('Typing', `Triggered typing indicator in chat ${currentChatId}`);
+        });
+
+        // Mark messages as read
+        markReadBtn.addEventListener('click', () => {
+            const messageIdsString = messageIdsInput.value.trim();
+            
+            if (!socket || !socket.connected) {
+                logEvent('Error', 'Not connected to server');
+                return;
+            }
+            
+            if (!currentChatId) {
+                logEvent('Error', 'Please join a chat room first');
+                return;
+            }
+            
+            if (!messageIdsString) {
+                logEvent('Error', 'Please enter message IDs');
+                return;
+            }
+
+            const messageIds = messageIdsString.split(',').map(id => id.trim());
+            
+            socket.emit('mark-read', {
+                chatId: currentChatId,
+                messageIds
+            });
+            
+            logEvent('Mark Read', `Marked messages as read in chat ${currentChatId}: ${messageIds.join(', ')}`);
+        });
+
+        // Clear logs
+        clearLogsBtn.addEventListener('click', () => {
+            eventsLog.innerHTML = '';
+        });
+    </script>
+</body>
+</html> 

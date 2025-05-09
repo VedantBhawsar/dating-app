@@ -50,7 +50,7 @@ const LoginScreen = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      const response = await fetch("https://f143-223-185-38-78.ngrok-free.app/api/auth/google");
+      const response = await fetch(`https://88a3-110-227-252-198.ngrok-free.app/auth/google`);
       const data = await response.json();
       
       if (data && data.url) {
