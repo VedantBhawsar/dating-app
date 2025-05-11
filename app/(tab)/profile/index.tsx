@@ -3,14 +3,13 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Modal, Tex
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { profileService, authService, settingsService } from '../../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserSettings, NotificationSettings, PrivacySettings, AccountSettings, defaultUserSettings } from '../../../models/settings';
 
 // --- API Configuration ---
-const API_BASE_URL = 'https://d12f-110-227-252-198.ngrok-free.app/api'; // Reminder: Ngrok URLs are temporary
+const API_BASE_URL = 'https://52f8-223-185-43-120.ngrok-free.app/api'; // Reminder: Ngrok URLs are temporary
 
 // --- Frontend Data Structure ---
 interface ProfileData {

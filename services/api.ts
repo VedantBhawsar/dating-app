@@ -1,7 +1,7 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = `https://d12f-110-227-252-198.ngrok-free.app/api`;
+const API_URL = `https://52f8-223-185-43-120.ngrok-free.app/api`;
 console.log("API URL configured as:", API_URL);
 
 // Create axios instance with base URL
@@ -407,7 +407,9 @@ export const messageService = {
 
   getMessages: async (chatId: string, limit = 20, page = 1) => {
     try {
-      const response = await api.get(`/chats/${chatId}/messages?limit=${limit}&page=${page}`);
+      const response = await api.get(
+        `/chats/${chatId}/messages?limit=${limit}&page=${page}`
+      );
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
@@ -417,11 +419,15 @@ export const messageService = {
     }
   },
 
-  sendMessage: async (chatId: string, content: string, messageType = 'TEXT') => {
+  sendMessage: async (
+    chatId: string,
+    content: string,
+    messageType = "TEXT"
+  ) => {
     try {
       const response = await api.post(`/chats/${chatId}/messages`, {
         content,
-        messageType
+        messageType,
       });
       return response.data;
     } catch (error) {
@@ -435,7 +441,7 @@ export const messageService = {
   markMessagesAsRead: async (chatId: string, messageIds: string[]) => {
     try {
       const response = await api.post(`/chats/${chatId}/messages/read`, {
-        messageIds
+        messageIds,
       });
       return response.data;
     } catch (error) {
@@ -444,27 +450,27 @@ export const messageService = {
       }
       throw error;
     }
-  }
+  },
 };
 
 export const settingsService = {
   // Helper function to save settings to local storage
   saveSettingsToLocalStorage: async (settings: any) => {
     try {
-      await AsyncStorage.setItem('userSettings', JSON.stringify(settings));
-      console.log('Settings saved to local storage');
+      await AsyncStorage.setItem("userSettings", JSON.stringify(settings));
+      console.log("Settings saved to local storage");
     } catch (error) {
-      console.error('Error saving settings to local storage:', error);
+      console.error("Error saving settings to local storage:", error);
     }
   },
 
   // Helper function to get settings from local storage
   getSettingsFromLocalStorage: async () => {
     try {
-      const settings = await AsyncStorage.getItem('userSettings');
+      const settings = await AsyncStorage.getItem("userSettings");
       return settings ? JSON.parse(settings) : null;
     } catch (error) {
-      console.error('Error getting settings from local storage:', error);
+      console.error("Error getting settings from local storage:", error);
       return null;
     }
   },
@@ -472,23 +478,23 @@ export const settingsService = {
   getSettings: async () => {
     try {
       // First try to get from API
-      const response = await api.get('/settings');
+      const response = await api.get("/settings");
       const settings = response.data;
-      
+
       // Save to local storage for offline access
       await settingsService.saveSettingsToLocalStorage(settings);
-      
+
       return settings;
     } catch (error) {
-      console.error('Error fetching settings from API:', error);
-      
+      console.error("Error fetching settings from API:", error);
+
       // If API fails, try to get from local storage
       const localSettings = await settingsService.getSettingsFromLocalStorage();
       if (localSettings) {
-        console.log('Retrieved settings from local storage');
+        console.log("Retrieved settings from local storage");
         return localSettings;
       }
-      
+
       // If both fail, throw the original error
       if (axios.isAxiosError(error) && error.response) {
         throw error.response.data;
@@ -503,45 +509,47 @@ export const settingsService = {
     likesReceived?: boolean;
     profileVisits?: boolean;
     appUpdates?: boolean;
-    permissionStatus?: 'granted' | 'denied' | 'undetermined';
+    permissionStatus?: "granted" | "denied" | "undetermined";
   }) => {
     try {
       // Update on server
-      const response = await api.put('/settings/notifications', settings);
+      const response = await api.put("/settings/notifications", settings);
       const updatedSettings = response.data;
-      
+
       // Update in local storage
-      const currentSettings = await settingsService.getSettingsFromLocalStorage();
+      const currentSettings =
+        await settingsService.getSettingsFromLocalStorage();
       if (currentSettings) {
         const mergedSettings = {
           ...currentSettings,
           notifications: {
             ...currentSettings.notifications,
-            ...settings
-          }
+            ...settings,
+          },
         };
         await settingsService.saveSettingsToLocalStorage(mergedSettings);
       }
-      
+
       return updatedSettings;
     } catch (error) {
       // Try to update local storage even if API fails
       try {
-        const currentSettings = await settingsService.getSettingsFromLocalStorage();
+        const currentSettings =
+          await settingsService.getSettingsFromLocalStorage();
         if (currentSettings) {
           const mergedSettings = {
             ...currentSettings,
             notifications: {
               ...currentSettings.notifications,
-              ...settings
-            }
+              ...settings,
+            },
           };
           await settingsService.saveSettingsToLocalStorage(mergedSettings);
         }
       } catch (localError) {
-        console.error('Error updating local settings:', localError);
+        console.error("Error updating local settings:", localError);
       }
-      
+
       if (axios.isAxiosError(error) && error.response) {
         throw error.response.data;
       }
@@ -550,48 +558,50 @@ export const settingsService = {
   },
 
   updatePrivacySettings: async (settings: {
-    profileVisibility?: 'public' | 'matches-only' | 'hidden';
+    profileVisibility?: "public" | "matches-only" | "hidden";
     showDistance?: boolean;
     showLastActive?: boolean;
     blockList?: string[];
   }) => {
     try {
       // Update on server
-      const response = await api.put('/settings/privacy', settings);
+      const response = await api.put("/settings/privacy", settings);
       const updatedSettings = response.data;
-      
+
       // Update in local storage
-      const currentSettings = await settingsService.getSettingsFromLocalStorage();
+      const currentSettings =
+        await settingsService.getSettingsFromLocalStorage();
       if (currentSettings) {
         const mergedSettings = {
           ...currentSettings,
           privacy: {
             ...currentSettings.privacy,
-            ...settings
-          }
+            ...settings,
+          },
         };
         await settingsService.saveSettingsToLocalStorage(mergedSettings);
       }
-      
+
       return updatedSettings;
     } catch (error) {
       // Try to update local storage even if API fails
       try {
-        const currentSettings = await settingsService.getSettingsFromLocalStorage();
+        const currentSettings =
+          await settingsService.getSettingsFromLocalStorage();
         if (currentSettings) {
           const mergedSettings = {
             ...currentSettings,
             privacy: {
               ...currentSettings.privacy,
-              ...settings
-            }
+              ...settings,
+            },
           };
           await settingsService.saveSettingsToLocalStorage(mergedSettings);
         }
       } catch (localError) {
-        console.error('Error updating local privacy settings:', localError);
+        console.error("Error updating local privacy settings:", localError);
       }
-      
+
       if (axios.isAxiosError(error) && error.response) {
         throw error.response.data;
       }
@@ -609,41 +619,43 @@ export const settingsService = {
   }) => {
     try {
       // Update on server
-      const response = await api.put('/settings/account', settings);
+      const response = await api.put("/settings/account", settings);
       const updatedSettings = response.data;
-      
+
       // Update in local storage
-      const currentSettings = await settingsService.getSettingsFromLocalStorage();
+      const currentSettings =
+        await settingsService.getSettingsFromLocalStorage();
       if (currentSettings) {
         const mergedSettings = {
           ...currentSettings,
           account: {
             ...currentSettings.account,
-            ...settings
-          }
+            ...settings,
+          },
         };
         await settingsService.saveSettingsToLocalStorage(mergedSettings);
       }
-      
+
       return updatedSettings;
     } catch (error) {
       // Try to update local storage even if API fails
       try {
-        const currentSettings = await settingsService.getSettingsFromLocalStorage();
+        const currentSettings =
+          await settingsService.getSettingsFromLocalStorage();
         if (currentSettings) {
           const mergedSettings = {
             ...currentSettings,
             account: {
               ...currentSettings.account,
-              ...settings
-            }
+              ...settings,
+            },
           };
           await settingsService.saveSettingsToLocalStorage(mergedSettings);
         }
       } catch (localError) {
-        console.error('Error updating local account settings:', localError);
+        console.error("Error updating local account settings:", localError);
       }
-      
+
       if (axios.isAxiosError(error) && error.response) {
         throw error.response.data;
       }
@@ -656,7 +668,7 @@ export const settingsService = {
     newPassword: string;
   }) => {
     try {
-      const response = await api.put('/settings/change-password', data);
+      const response = await api.put("/settings/change-password", data);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
@@ -668,8 +680,8 @@ export const settingsService = {
 
   deleteAccount: async (reason?: string) => {
     try {
-      const response = await api.delete('/settings/account', {
-        data: { reason }
+      const response = await api.delete("/settings/account", {
+        data: { reason },
       });
       return response.data;
     } catch (error) {
@@ -682,7 +694,7 @@ export const settingsService = {
 
   blockUser: async (userId: string) => {
     try {
-      const response = await api.post('/settings/block-user', { userId });
+      const response = await api.post("/settings/block-user", { userId });
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
@@ -706,7 +718,7 @@ export const settingsService = {
 
   getBlockedUsers: async () => {
     try {
-      const response = await api.get('/settings/blocked-users');
+      const response = await api.get("/settings/blocked-users");
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
@@ -722,7 +734,7 @@ export const settingsService = {
     details?: string;
   }) => {
     try {
-      const response = await api.post('/settings/report-user', data);
+      const response = await api.post("/settings/report-user", data);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
@@ -730,7 +742,7 @@ export const settingsService = {
       }
       throw error;
     }
-  }
+  },
 };
 
 export default api;

@@ -107,8 +107,8 @@ export default function ChatDetailScreen() {
       
       // Mark unread messages as read
       const unreadMessages = messagesData
-        .filter(msg => !msg.isRead && msg.senderId !== userId)
-        .map(msg => msg.id);
+        .filter((msg: any) => !msg.isRead && msg.senderId !== userId)
+        .map((msg: any) => msg.id);
         
       if (unreadMessages.length > 0) {
         await messageService.markMessagesAsRead(chatId, unreadMessages);
