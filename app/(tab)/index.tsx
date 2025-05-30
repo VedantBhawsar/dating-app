@@ -112,7 +112,7 @@ const ExploreScreen = () => {
       // setHasMoreMatches(data.pagination.hasNextPage);
       setPage(pageNum);
     } catch (err: any) {
-      console.error('Error fetching potential matches:', err);
+      // console.error('Error fetching potential matches:', err);
       setError(err.error || 'Failed to load matches. Please try again.');
     } finally {
       setIsLoading(false);

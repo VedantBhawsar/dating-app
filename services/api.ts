@@ -1,16 +1,13 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_URL } from "@/constants/config";
 
-const API_URL = `https://52f8-223-185-43-120.ngrok-free.app/api`;
-console.log("API URL configured as:", API_URL);
 
 // Create axios instance with base URL
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
-    // Don't set Authorization here as AsyncStorage.getItem returns a Promise
-    // Authorization will be set in the request interceptor
   },
 });
 
@@ -56,6 +53,8 @@ export const authService = {
     firstName: string;
   }) => {
     try {
+
+      console.log("Registering user:", userData);
       const response = await api.post("/auth/register", userData);
 
       // Store tokens in AsyncStorage

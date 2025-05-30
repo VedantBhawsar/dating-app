@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SOCKET_URL } from "@/constants/config";
 
-// Define the API URL - this should match your backend
-const API_URL = "https://52f8-223-185-43-120.ngrok-free.app/api";
 
 // Define event types for type safety
 export type SocketEventType =
@@ -110,7 +109,7 @@ class SocketService extends EventEmitter {
         if (!token) return;
 
         const response = await fetch(
-          `${API_URL}/chats/${this.currentChatId}/messages?since=${this.lastMessageTimestamp}`,
+          `${SOCKET_URL}/chats/${this.currentChatId}/messages?since=${this.lastMessageTimestamp}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -176,7 +175,7 @@ class SocketService extends EventEmitter {
       const token = await AsyncStorage.getItem("accessToken");
       if (!token) return;
 
-      const response = await fetch(`${API_URL}/chats/${chatId}/messages`, {
+      const response = await fetch(`${SOCKET_URL}/chats/${chatId}/messages`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -210,7 +209,7 @@ class SocketService extends EventEmitter {
       const token = await AsyncStorage.getItem("accessToken");
       if (!token) return;
 
-      await fetch(`${API_URL}/chats/${chatId}/typing`, {
+      await fetch(`${SOCKET_URL}/chats/${chatId}/typing`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -236,7 +235,7 @@ class SocketService extends EventEmitter {
       const token = await AsyncStorage.getItem("accessToken");
       if (!token) return;
 
-      const response = await fetch(`${API_URL}/chats/${chatId}/messages/read`, {
+      const response = await fetch(`${SOCKET_URL}/chats/${chatId}/messages/read`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -7,9 +7,7 @@ import { useRouter } from 'expo-router';
 import { profileService, authService, settingsService } from '../../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserSettings, NotificationSettings, PrivacySettings, AccountSettings, defaultUserSettings } from '../../../models/settings';
-
-// --- API Configuration ---
-const API_BASE_URL = 'https://52f8-223-185-43-120.ngrok-free.app/api'; // Reminder: Ngrok URLs are temporary
+import { API_URL } from '@/constants/config';
 
 // --- Frontend Data Structure ---
 interface ProfileData {
@@ -668,7 +666,7 @@ const ProfileScreen = () => {
         } as any);
         
         const token = await AsyncStorage.getItem('accessToken');
-        const endpoint = isProfilePic ? `${API_BASE_URL}/profile/avatar` : `${API_BASE_URL}/profile/gallery`;
+        const endpoint = isProfilePic ? `${API_URL}/profile/avatar` : `${API_URL}/profile/gallery`;
         
         const response = await fetch(endpoint, { method: 'POST', body: formData, headers: { 'Authorization': `Bearer ${token}` } });
         if (!response.ok) {
@@ -699,7 +697,7 @@ const ProfileScreen = () => {
             try {
               const token = await AsyncStorage.getItem('accessToken');
               // Backend must have DELETE /profile/gallery/:imageId endpoint
-              const response = await fetch(`${API_BASE_URL}/profile/gallery/${imageToRemove.id}`, {
+              const response = await fetch(`${API_URL}/profile/gallery/${imageToRemove.id}`, {
                 method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
               });
               if (!response.ok) { const err = await response.text(); throw new Error(`Delete failed: ${response.status} ${err}`); }
@@ -844,7 +842,7 @@ const ProfileScreen = () => {
                   <TouchableOpacity 
                     style={styles.permissionButton}
                     onPress={async () => {
-                      if (settingsData.notifications.permissionStatus === 'denied') {
+                      if (settingsData.notifications?.permissionStatus === 'denied') {
                         openAppSettings();
                       } else {
                         const status = await requestNotificationPermissions();
