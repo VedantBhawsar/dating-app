@@ -6,7 +6,7 @@ const RootLayout = () => {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/auth/login"); 
+    router.replace("/auth/login");
   }, []);
 
   return (
