@@ -1,61 +1,51 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  SafeAreaView, 
-  StyleSheet, 
-  FlatList, 
-  Image, 
-  Text, 
-  TouchableOpacity, 
+import {
+  View,
+  SafeAreaView,
+  StyleSheet,
+  FlatList,
+  Image,
+  Text,
+  TouchableOpacity,
   Dimensions,
   Button, // Keep for your "Add Match" button
   ActivityIndicator,
-  Alert
+  Alert,
+  RefreshControl, // Added for pull-to-refresh
 } from 'react-native';
 import MatchesHeader from '../../components/headers/MatchesHeader';
 import { useRouter } from 'expo-router';
 import { matchService } from '../../services/api'; // Assuming you create/use this service
 import { Ionicons } from '@expo/vector-icons'; // For error icon
 
+// --- Interface for data coming directly from the API ---
+// This should reflect the actual structure of a single match object from your backend.
+// Based on your log: {"chatRoomId": "...", "displayName": ..., "matchId": ..., "profilePicture": ..., "userId": ...}
+// IMPORTANT: Added 'status' and 'currentStatus' based on their usage for DisplayMatch.
+// Verify these field names and their presence in your actual API response.
+interface BackendMatchFromAPI {
+  matchId: string;
+  userId: string;           // This is the ID of the other user in the match
+  displayName: string;
+  profilePicture: string;   // URL for the profile picture
+  status: "PENDING" | "ACCEPTED" | "REJECTED"; // The match status (e.g., confirmed match)
+  currentStatus?: 'ONLINE' | 'OFFLINE' | string; // Online status of the other user (e.g., 'ONLINE', 'OFFLINE')
+
+  // Optional fields from your log - include if needed for other purposes
+  chatRoomId?: string;
+  // lastMessage?: { content: string; isSentByMe: boolean; sentAt: string; };
+  // matchedOn?: string;
+}
+
 // --- Frontend Interface for a displayed match ---
-// This should reflect the data you want to DISPLAY for each match card.
-// It's derived from the `targetUser` part of the BackendMatch.
+// This remains the same as it defines what you want to display.
 interface DisplayMatch {
-  id: string;          // This will be targetUser.id or the match.id itself, depending on navigation needs
-  targetUserId: string; // Useful for navigation or further actions
-  name: string;        // From targetUser.displayName
-  image: string;       // From targetUser.avatarUrl
-  matchStatus: "PENDING" | "ACCEPTED" | "REJECTED"; // Status of the match interaction
-  onlineStatus: 'online' | 'offline' | 'unknown'; // Online status of the targetUser
-}
-
-// --- Backend Match Structure (for reference from your API docs) ---
-interface BackendMatch {
-  id: string; // The ID of the match record itself
-  userId: string;
-  targetUserId: string;
-  status: "PENDING" | "ACCEPTED" | "REJECTED"; // Match interaction status
-  initiatedBy: string;
-  matchScore?: number;
-  createdAt: string;
-  updatedAt: string;
-  targetUser: { // Profile info of the other user in the match
-    id: string;
-    displayName?: string;
-    avatarUrl?: string;
-    // Ideally, backend provides an online status or lastSeen for targetUser
-    // For now, let's assume it might be 'online' | 'offline' or we default it
-    currentStatus?: 'ONLINE' | 'OFFLINE'; // Example from a hypothetical backend field
-    // ... other relevant fields from targetUser's profile
-  };
-}
-
-interface PaginatedMatchesResponse {
-    data: BackendMatch[]; // Assuming backend wraps matches in a 'data' array
-    // Add other pagination fields if your backend provides them:
-    // totalItems: number;
-    //totalPages: number;
-    //currentPage: number;
+  id: string;          // Unique ID for the list item (derived from matchId)
+  targetUserId: string; // ID of the other user, for navigation/actions
+  displayName: string;
+  profilePicture: string;
+  matchStatus: "PENDING" | "ACCEPTED" | "REJECTED";
+  onlineStatus: 'online' | 'offline' | 'unknown';
 }
 
 
@@ -68,119 +58,97 @@ const MatchesScreen = () => {
   const [matches, setMatches] = useState<DisplayMatch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
-  // For pagination (optional, implement if needed)
-  // const [currentPage, setCurrentPage] = useState(1);
-  // const [isLoadingMore, setIsLoadingMore] = useState(false);
-  // const [hasMore, setHasMore] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); // For pull-to-refresh
 
-
-  const fetchMatches = useCallback(async (/* pageToFetch = 1 */) => {
-    // if (pageToFetch === 1) {
-      setIsLoading(true);
-    // } else {
-    //   setIsLoadingMore(true);
-    // }
+  const fetchMatches = useCallback(async () => {
+    if (!refreshing) setIsLoading(true); // Only show full loader if not refreshing
     setApiError(null);
 
     try {
-      // Example: Fetching potential matches. Change to confirmed or add a toggle.
-      // const response: PaginatedMatchesResponse = await matchService.getPotentialMatches({ limit: 20, page: pageToFetch }); 
-      const response = await matchService.getConfirmedMatches(); // Assuming this returns BackendMatch[] or { data: BackendMatch[] }
+      // Assuming matchService.getConfirmedMatches() returns Promise<{ data: BackendMatchFromAPI[] } | BackendMatchFromAPI[]>
+      const response: any = await matchService.getConfirmedMatches();
       
-      let backendMatchesData: BackendMatch[];
+      let rawApiMatches: BackendMatchFromAPI[];
 
-      if (Array.isArray(response)) { // If response is directly an array of matches
-        backendMatchesData = response;
-      } else if (response && Array.isArray(response.data)) { // If response is an object with a 'data' array
-        backendMatchesData = response.data;
+      if (Array.isArray(response)) {
+        rawApiMatches = response;
+      } else if (response && Array.isArray(response.data)) {
+        rawApiMatches = response.data;
       } else {
         console.warn("Unexpected matches response format:", response);
-        backendMatchesData = [];
+        rawApiMatches = [];
       }
 
+      // Log the first raw item to verify its structure if needed
+      if (rawApiMatches.length > 0) {
+        // console.log("First raw API match data:", rawApiMatches[0]);
+      }
 
-      const newDisplayMatches: DisplayMatch[] = backendMatchesData.map(backendMatch => ({
-        id: backendMatch.id, // Use the match ID for the card key and potential navigation
-        targetUserId: backendMatch.targetUser.id,
-        name: backendMatch.targetUser.displayName || 'Unknown User',
-        image: backendMatch.targetUser.avatarUrl || 'https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image', // Placeholder
-        matchStatus: backendMatch.status,
-        // Map backend's online status if available, otherwise default
-        onlineStatus: backendMatch.targetUser.currentStatus === 'ONLINE' ? 'online' : 
-                      backendMatch.targetUser.currentStatus === 'OFFLINE' ? 'offline' : 'unknown',
+      console.log("rawApiMatches", rawApiMatches[0]);
+      const newDisplayMatches: DisplayMatch[] = rawApiMatches.map(apiMatch => ({
+        id: apiMatch.matchId, // Use matchId as the unique ID for DisplayMatch
+        targetUserId: apiMatch.userId,
+        displayName: apiMatch.displayName || 'Unknown User',
+        profilePicture: apiMatch.profilePicture || 'https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image',
+        matchStatus: apiMatch.status, // Assumes 'status' field exists on apiMatch
+        onlineStatus: apiMatch.currentStatus === 'ONLINE' ? 'online' : 'offline', // Assumes 'currentStatus' field exists
       }));
 
-      // if (pageToFetch === 1) {
-        setMatches(newDisplayMatches);
-      // } else {
-      //   setMatches(prevMatches => [...prevMatches, ...newDisplayMatches]);
-      // }
-      // setHasMore(newDisplayMatches.length > 0); // Basic check for more data
+      setMatches(newDisplayMatches);
 
     } catch (error: any) {
       console.error("Error fetching matches:", error);
       const errorMessage = error.response?.data?.error || error.message || "Failed to load matches.";
       setApiError(errorMessage);
-      // Alert.alert("Error", errorMessage); // Can be intrusive
     } finally {
       setIsLoading(false);
-      // setIsLoadingMore(false);
+      if (refreshing) setRefreshing(false);
     }
-  }, []);
+  }, [refreshing]); // Add refreshing to dependency array if its change should trigger a re-creation of fetchMatches (though not strictly necessary here as onRefresh controls it)
 
   useEffect(() => {
     fetchMatches();
-  }, [fetchMatches]);
+  }, [fetchMatches]); // fetchMatches is memoized by useCallback
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // fetchMatches will set refreshing to false in its finally block
+    await fetchMatches();
+  }, [fetchMatches]); // Re-create onRefresh if fetchMatches changes
 
   const handleProfilePress = (matchItem: DisplayMatch) => {
-    // Navigate to a generic profile page, passing the targetUserId.
-    // That profile page will then fetch details for that user.
-    // Or, if you want to pass more data directly:
     router.push({
-      pathname: "/(tab)/profile", // Or your specific user profile view route
-      params: { 
-        userId: matchItem.targetUserId, // Key to fetch specific user profile
-        // You can pass other readily available info if your profile page can use it as initial data
-        // name: matchItem.name, 
-        // image: matchItem.image 
+      pathname: "/(tab)/profile",
+      params: {
+        userId: matchItem.targetUserId,
       }
     });
   };
 
   const renderItem = ({ item }: { item: DisplayMatch }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.card}
       onPress={() => handleProfilePress(item)}
     >
-      <Image source={{ uri: item.image }} style={[styles.image, { width: IMAGE_SIZE, height: IMAGE_SIZE }]} />
-      <Text style={styles.name}>{item.name}</Text>
+      <Image source={{ uri: item.profilePicture }} style={[styles.image, { width: IMAGE_SIZE, height: IMAGE_SIZE }]} />
+      <Text style={styles.name}>{item.displayName}</Text>
       <View style={styles.statusContainer}>
         <View style={[
-            styles.statusDot, 
-            { backgroundColor: item.onlineStatus === 'online' ? '#27AE60' : item.onlineStatus === 'offline' ? '#E74C3C' : '#95A5A6' } // Grey for unknown
+            styles.statusDot,
+            { backgroundColor: item.onlineStatus === 'online' ? '#27AE60' : item.onlineStatus === 'offline' ? '#E74C3C' : '#95A5A6' }
         ]} />
         <Text style={[
-            styles.statusText, 
+            styles.statusText,
             { color: item.onlineStatus === 'online' ? '#27AE60' : item.onlineStatus === 'offline' ? '#E74C3C' : '#7F8C8D' }
         ]}>
             {item.onlineStatus.charAt(0).toUpperCase() + item.onlineStatus.slice(1)}
         </Text>
       </View>
-      {/* You might want to show the matchStatus (PENDING, ACCEPTED) as well */}
-      {/* <Text style={styles.matchInteractionStatus}>{item.matchStatus}</Text> */}
+      <Text style={styles.matchInteractionStatus}>{item.matchStatus}</Text>
     </TouchableOpacity>
   );
 
-  // const loadMoreMatches = () => {
-  //   if (!isLoadingMore && hasMore) {
-  //     const nextPage = currentPage + 1;
-  //     setCurrentPage(nextPage);
-  //     fetchMatches(nextPage);
-  //   }
-  // };
-
-
-  if (isLoading && matches.length === 0) { // Show full screen loader only on initial load
+  if (isLoading && matches.length === 0 && !refreshing) {
     return (
       <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" color="#FF6F00" />
@@ -189,18 +157,19 @@ const MatchesScreen = () => {
     );
   }
 
-  if (apiError && matches.length === 0) { // Show full screen error only if no data could be loaded
+  if (apiError && matches.length === 0) {
     return (
       <SafeAreaView style={styles.centered}>
         <Ionicons name="cloud-offline-outline" size={60} color="#888" />
         <Text style={styles.errorText}>{apiError}</Text>
         <TouchableOpacity onPress={()=> {
-          router.push("/auth/login")
-        }}>  
-        <Text>Go to Login~</Text>
-
+          router.push("/auth/login") // Consider if this is always the right action
+        }}>
+          <Text style={{color: '#FF6F00', marginTop: 10, textDecorationLine: 'underline'}}>Go to Login</Text>
         </TouchableOpacity>
-        <Button title="Try Again" onPress={() => fetchMatches()} color="#FF6F00" />
+        <TouchableOpacity style={[styles.retryButton, {marginTop: 20}]} onPress={() => fetchMatches()}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -209,7 +178,7 @@ const MatchesScreen = () => {
     <SafeAreaView style={styles.container}>
       <MatchesHeader />
       <Button
-        title="Temp: Go to Onboarding Q31" // Changed title for clarity
+        title="Temp: Go to Onboarding Q31"
         onPress={() => router.push('/onboarding/values&futureplans/Question31')}
       />
       <View style={styles.content}>
@@ -226,14 +195,25 @@ const MatchesScreen = () => {
           <FlatList
             data={matches}
             renderItem={renderItem}
-            keyExtractor={(item) => item.id} // Using match.id as key
+            keyExtractor={(item) => item.id}
             numColumns={2}
             columnWrapperStyle={styles.row}
             showsVerticalScrollIndicator={false}
-            // onEndReached={loadMoreMatches} // For pagination
-            // onEndReachedThreshold={0.5}      // For pagination
-            // ListFooterComponent={isLoadingMore ? <ActivityIndicator style={{ marginVertical: 20 }} size="small" color="#FF6F00" /> : null}
-          />
+            refreshControl={ // Added RefreshControl
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#FF6F00"]}
+                tintColor={"#FF6F00"} 
+              />
+            }
+                     />
+        )}
+        {/* Inline API error display if matches are already present but a refresh failed */}
+        {apiError && matches.length > 0 && (
+            <Text style={[styles.errorText, { padding: 10, backgroundColor: '#FFF0F0' }]}>
+                Could not refresh: {apiError}
+            </Text>
         )}
       </View>
     </SafeAreaView>
@@ -250,7 +230,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 10,
   },
-  centered: { // For loading and error states
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -289,41 +269,41 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   image: {
-    borderRadius: 15, // Keep original image border radius
-    backgroundColor: '#E0E0E0', // Placeholder background for image
+    borderRadius: (IMAGE_SIZE * 0.1), // Make it slightly rounded, or use 15 if you prefer the original card's radius
+    backgroundColor: '#E0E0E0',
   },
   name: {
-    fontSize: 18,
+    fontSize: 16, // Adjusted for better fit
     fontWeight: '600',
     color: '#2C3E50',
-    marginTop: 10,
-    textAlign: 'center', // Center name if it wraps
+    marginTop: 8, // Adjusted
+    textAlign: 'center',
+    minHeight: 38, // To accommodate two lines of text if name is long
   },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 5, // Adjusted
   },
   statusDot: {
-    width: 10, // Slightly smaller dot
-    height: 10,
-    borderRadius: 5,
-    marginRight: 6,
+    width: 9, // Adjusted
+    height: 9,
+    borderRadius: 4.5,
+    marginRight: 5, // Adjusted
   },
   statusText: {
-    fontSize: 13, // Slightly smaller status text
+    fontSize: 12, // Adjusted
     fontWeight: '500',
   },
-  // Optional style for match interaction status
   matchInteractionStatus: {
     fontSize: 12,
     color: '#7F8C8D',
     marginTop: 4,
     fontStyle: 'italic',
   },
-  retryButton: { // Generic retry button
+  retryButton: {
     marginTop: 20,
-    backgroundColor: '#FF8F00', // Slightly different color for distinction
+    backgroundColor: '#FF8F00',
     paddingVertical: 10,
     paddingHorizontal: 25,
     borderRadius: 8,
