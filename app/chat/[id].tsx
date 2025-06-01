@@ -10,7 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  Image
+  Image,
+  Alert
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,6 +60,7 @@ const MessageBubble = ({ message, isSender }: { message: Message, isSender: bool
 
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams();
+  console.log(id)
   const chatId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
   
@@ -74,6 +76,8 @@ export default function ChatDetailScreen() {
   const flatListRef = useRef<FlatList>(null);
   const typingIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  console.log(chatId, userId)
+
   // Get current user ID
   useEffect(() => {
     const getUserId = async () => {
@@ -81,7 +85,12 @@ export default function ChatDetailScreen() {
         const userInfo = await AsyncStorage.getItem('userInfo');
         if (userInfo) {
           const parsedUserInfo = JSON.parse(userInfo);
+          console.log('User info retrieved:', parsedUserInfo.id);
           setUserId(parsedUserInfo.id);
+        } else {
+          console.error('No user info found in AsyncStorage');
+          // Redirect to login if no user info is found
+          router.replace('/auth/login');
         }
       } catch (err) {
         console.error('Error getting user ID:', err);
@@ -89,29 +98,40 @@ export default function ChatDetailScreen() {
     };
     
     getUserId();
-  }, []);
+  }, [router]);
 
   // Fetch chat info and messages
   const fetchChatData = async () => {
     try {
+      // Alert.alert('Fetching chat data for chat ID:', chatId);
       setIsLoading(true);
       setError(null);
       
+      console.log('Fetching chat data for chat ID:', chatId);
+      
       // Get chat details
       const chatDetails = await messageService.getChatById(chatId);
+      console.log('Chat details received:', chatDetails);
       setChatInfo(chatDetails);
       
       // Get messages
       const messagesData = await messageService.getMessages(chatId);
-      setMessages(messagesData.reverse()); // Newest messages at the bottom
+      console.log('Messages received:', messagesData?.length || 0);
       
-      // Mark unread messages as read
-      const unreadMessages = messagesData
-        .filter((msg: any) => !msg.isRead && msg.senderId !== userId)
-        .map((msg: any) => msg.id);
+      if (Array.isArray(messagesData)) {
+        setMessages(messagesData.reverse()); // Newest messages at the bottom
         
-      if (unreadMessages.length > 0) {
-        await messageService.markMessagesAsRead(chatId, unreadMessages);
+        // Mark unread messages as read
+        const unreadMessages = messagesData
+          .filter((msg: any) => !msg.isRead && msg.senderId !== userId)
+          .map((msg: any) => msg.id);
+          
+        if (unreadMessages.length > 0) {
+          await messageService.markMessagesAsRead(chatId, unreadMessages);
+        }
+      } else {
+        console.error('Messages data is not an array:', messagesData);
+        setMessages([]);
       }
     } catch (err: any) {
       console.error('Error fetching chat data:', err);
@@ -121,27 +141,51 @@ export default function ChatDetailScreen() {
     }
   };
 
-  // Connect to socket and join chat room
+  // Main useEffect for initialization
   useEffect(() => {
+    console.log('Chat detail screen initialized with chat ID:', chatId);
+    const getUserId = async () => {
+      try {
+        const userInfo = await AsyncStorage.getItem('accessToken');
+        console.log(userInfo)
+        if (userInfo) {
+          const parsedUserInfo = JSON.parse(userInfo);
+          setUserId(parsedUserInfo.id);
+        } else {
+          console.error('No user info found in AsyncStorage');
+          // Redirect to login if no user info is found
+          // router.replace('/auth/login');
+        }
+      } catch (err) {
+        console.error('Error getting user ID:', err);
+      }
+    };
+    
+    getUserId();
+    
+    // Connect to socket and join chat room
     const initializeSocket = async () => {
       try {
+        console.log('Connecting to socket and joining chat:', chatId);
         await socketService.connect();
         socketService.joinChat(chatId);
         
         // Listen for new messages
-        socketService.on('new-message', (data) => {
-          if (data.chatId === chatId) {
-            setMessages(prev => [data, ...prev]);
+        const handleNewMessage = (newMessage: Message) => {
+          console.log('New message received:', newMessage);
+          if (newMessage.chatId === chatId) {
+            setMessages(prevMessages => [newMessage, ...prevMessages]);
             
             // Mark message as read if it's not from current user
-            if (data.senderId !== userId) {
-              messageService.markMessagesAsRead(chatId, [data.id]);
+            if (newMessage.senderId !== userId) {
+              messageService.markMessagesAsRead(chatId, [newMessage.id]);
             }
           }
-        });
+        };
         
         // Listen for typing indicators
-        socketService.on('user-typing', (data) => {
+        const handleTypingIndicator = (data: any) => {
+          console.log('Typing indicator received:', data);
           if (data.chatId === chatId && data.userId !== userId) {
             setIsTyping(true);
             
@@ -155,10 +199,13 @@ export default function ChatDetailScreen() {
               setIsTyping(false);
             }, 3000);
           }
-        });
+        };
+        
+        socketService.on('new-message', handleNewMessage);
+        socketService.on('user-typing', handleTypingIndicator);
         
         // Listen for read receipts
-        socketService.on('messages-read', (data) => {
+        const handleReadReceipt = (data: any) => {
           if (data.chatId === chatId) {
             setMessages(prev => 
               prev.map(msg => 
@@ -168,7 +215,20 @@ export default function ChatDetailScreen() {
               )
             );
           }
-        });
+        };
+        
+        socketService.on('messages-read', handleReadReceipt);
+        
+        return () => {
+          socketService.off('new-message', handleNewMessage);
+          socketService.off('user-typing', handleTypingIndicator);
+          socketService.off('messages-read', handleReadReceipt);
+          
+          // Clear timeout on cleanup
+          if (typingIndicatorTimeoutRef.current) {
+            clearTimeout(typingIndicatorTimeoutRef.current);
+          }
+        };
       } catch (err) {
         console.error('Failed to connect to WebSocket:', err);
       }
@@ -176,17 +236,6 @@ export default function ChatDetailScreen() {
     
     initializeSocket();
     fetchChatData();
-    
-    // Cleanup function
-    return () => {
-      socketService.off('new-message', () => {});
-      socketService.off('user-typing', () => {});
-      socketService.off('messages-read', () => {});
-      
-      if (typingIndicatorTimeoutRef.current) {
-        clearTimeout(typingIndicatorTimeoutRef.current);
-      }
-    };
   }, [chatId, userId]);
 
   // Handle sending a message
@@ -194,15 +243,22 @@ export default function ChatDetailScreen() {
     if (!inputText.trim()) return;
     
     try {
-      // Clear input immediately for better UX
+      console.log('Sending message:', inputText);
       const messageText = inputText;
       setInputText('');
       
       // Send message via API
       const newMessage = await messageService.sendMessage(chatId, messageText);
-      
+      console.log('New message:', newMessage)
       // Send message via socket for real-time updates
-      socketService.sendMessage(chatId, messageText);
+      await socketService.sendMessage(chatId, inputText.trim());
+      console.log('Message sent successfully');
+      
+      // Clear typing indicator
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        setTypingTimeout(null);
+      }
       
       // Scroll to bottom
       setTimeout(() => {
@@ -216,6 +272,7 @@ export default function ChatDetailScreen() {
 
   // Handle typing indicator
   const handleTyping = (text: string) => {
+    console.log('User typing:', text);
     setInputText(text);
     
     // Clear previous timeout
@@ -233,7 +290,7 @@ export default function ChatDetailScreen() {
   };
 
   // Render loading state
-  if (isLoading) {
+  if (isLoading && messages.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <Stack.Screen 
@@ -252,7 +309,7 @@ export default function ChatDetailScreen() {
   }
 
   // Render error state
-  if (error) {
+  if (error && messages.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <Stack.Screen 
@@ -303,6 +360,7 @@ export default function ChatDetailScreen() {
         
         {isTyping && (
           <View style={styles.typingIndicator}>
+            <ActivityIndicator size="small" color="#FF6F00" />
             <Text style={styles.typingText}>
               {chatInfo?.otherUser?.firstName || 'User'} is typing...
             </Text>
@@ -397,6 +455,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     padding: 12,
+    paddingBottom: 12,
+    marginBottom: 12,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#EEEEEE',
@@ -418,11 +478,17 @@ const styles = StyleSheet.create({
   typingIndicator: {
     padding: 8,
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   typingText: {
     color: '#666',
+    fontSize: 14,
     fontStyle: 'italic',
-    fontSize: 12,
+    marginLeft: 5,
   },
   loadingContainer: {
     flex: 1,
@@ -444,7 +510,7 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: '#FF3B30',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -452,7 +518,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6F00',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 20,
   },
   retryButtonText: {
     color: 'white',

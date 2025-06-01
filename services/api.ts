@@ -77,7 +77,7 @@ export const authService = {
   login: async (credentials: { email: string; password: string }) => {
     try {
       const response = await api.post("/auth/login", credentials);
-
+      console.log("Login successful", response);
       // Store tokens in AsyncStorage
       if (response.data.accessToken) {
         await AsyncStorage.setItem("accessToken", response.data.accessToken);

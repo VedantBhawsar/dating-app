@@ -7,56 +7,31 @@ import { StatusBar } from 'react-native';
 import { matchService } from '../../services/api';
 import { Ionicons } from '@expo/vector-icons';
 import MatchFoundModal from '../../components/modals/MatchFoundModal';
-
 const { width, height } = Dimensions.get('window');
 
-// Define the Match interface based on the backend model
-interface MatchProfile {
-  id: string;
-  userId: string;
-  targetUserId: string;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
-  initiatedBy: string;
-  matchScore?: number;
-  createdAt: string;
-  updatedAt: string;
-  targetUser: {
-    id: string;
-    displayName?: string;
-    firstName: string;
-    lastName?: string;
-    bio?: string;
-    avatarUrl?: string;
-    age?: number;
-    location?: {
-      city?: string;
-      state?: string;
-      country?: string;
-    };
-    occupation?: string;
-    education?: string;
-    // Other profile fields that might be useful for display
-  };
-}
 
-// Transform backend match data to a format compatible with our SwipeCard component
 const transformMatchToProfile = (profile: any) => {
-  // Check if the data is in the expected format from the API response
   return {
     id: profile.id,
     userId: profile.id,
     name: profile.displayName || 'No Name',
     image: profile.profilePicture || 'https://via.placeholder.com/400x600?text=No+Image',
-    bio: profile.bio || `${profile.occupation || ''} ${profile.religion ? 'Religion: ' + profile.religion : ''}`.trim() || 'No bio available',
+    bio: profile.bio || ((profile.occupation || '') + ' ' + (profile.religion ? 'Religion: ' + profile.religion : '')).trim() || 'No bio available',
     match: profile.compatibility || Math.floor(Math.random() * 30) + 70, // Fallback to random score between 70-99 if not provided
     age: profile.age,
     location: profile.location ? 
-      `${profile.location.city || ''}${profile.location.city && profile.location.state ? ', ' : ''}${profile.location.state || ''}${profile.location.country ? ', ' + profile.location.country : ''}` : 
+      (profile.location.city || '') + 
+      (profile.location.city && profile.location.state ? ', ' : '') + 
+      (profile.location.state || '') + 
+      (profile.location.country ? ', ' + profile.location.country : '') : 
       undefined,
     occupation: profile.occupation,
     education: profile.education
   };
 };
+
+
+type SwipeDirection = 'left' | 'right';
 
 const ExploreScreen = () => {
   const swiperRef = useRef<any>(null);
@@ -69,8 +44,9 @@ const ExploreScreen = () => {
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [matchedUser, setMatchedUser] = useState<any>(null);
   const [chatRoomId, setChatRoomId] = useState<string | undefined>(undefined);
+  const [swipeDirection, setSwipeDirection] = useState<SwipeDirection | null>(null);
 
-  // Function to fetch potential matches from the API
+
   const fetchPotentialMatches = async (pageNum = 1, refresh = false) => {
     try {
       if (refresh) {
@@ -83,16 +59,10 @@ const ExploreScreen = () => {
       const data = await matchService.getPotentialMatches(20, pageNum);
       console.log(data);
       
-      // Transform the matches data to the format expected by the SwipeCard component
       const transformedMatches = data.map(transformMatchToProfile);
       
-      // Check if there are only 3 matches remaining
       if (transformedMatches.length === 3) {
         console.log('Only 3 potential matches remaining!');
-        // You can add additional logic here, such as:
-        // - Showing a notification to the user
-        // - Triggering a refresh of the recommendation algorithm
-        // - Suggesting profile completion to get more matches
         Alert.alert(
           'Almost Out of Matches',
           'You have only 3 potential matches remaining. Complete your profile to get more personalized matches!',
@@ -108,11 +78,9 @@ const ExploreScreen = () => {
         setPotentialMatches(prev => [...prev, ...transformedMatches]);
       }
       
-      // Check if there are more matches to load
-      // setHasMoreMatches(data.pagination.hasNextPage);
+      setHasMoreMatches(data.pagination.hasNextPage);
       setPage(pageNum);
     } catch (err: any) {
-      // console.error('Error fetching potential matches:', err);
       setError(err.error || 'Failed to load matches. Please try again.');
     } finally {
       setIsLoading(false);
@@ -120,12 +88,10 @@ const ExploreScreen = () => {
     }
   };
 
-  // Load matches when the component mounts
   useEffect(() => {
     fetchPotentialMatches();
   }, []);
 
-  // Function to handle left swipe (reject)
   const handleSwipeLeft = (cardIndex: number) => {
     console.log(`Swiped LEFT (REJECT) on card at index ${cardIndex}`);
     const match = potentialMatches[cardIndex];
@@ -135,29 +101,23 @@ const ExploreScreen = () => {
       return;
     }
     
-    // Debug info - show match name instead of the whole object
     console.log(`Rejecting match: ${match.name} (ID: ${match.id})`);
 
-    if (match.userId) {
-      // Call API to reject the match
+    if (match.userId) { 
       matchService.makeMatchDecision(match.id, 'REJECTED')
         .then(() => {
           console.log(`Successfully rejected match ${match.id}`);
-          // No need to show any UI for rejections
         })
         .catch(err => {
           console.error(`Error rejecting match: ${err}`);
-          // Could show a toast message here if needed
         });
     } else {
       console.error('Match has no userId:', match);
     }
     
-    // Just log the rejection locally
     console.log(`Silently rejected profile: ${match.name}`);
   };
 
-  // Function to handle right swipe (accept)
   const handleSwipeRight = (cardIndex: number) => {
     console.log(`Swiped RIGHT (ACCEPT) on card at index ${cardIndex}`);
     const match = potentialMatches[cardIndex];
@@ -220,7 +180,7 @@ const ExploreScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor="white" barStyle="dark-content" />
-        <HomeHeader />
+        <HomeHeader onPress={() => {}} />
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color="#FF6F00" />
           <Text style={styles.loadingText}>Finding potential matches...</Text>
@@ -234,7 +194,7 @@ const ExploreScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor="white" barStyle="dark-content" />
-        <HomeHeader />
+        <HomeHeader onPress={fetchPotentialMatches} />
         <View style={styles.centerContent}>
           <Ionicons name="cloud-offline-outline" size={60} color="#FF6F00" />
           <Text style={styles.errorText}>{error}</Text>
@@ -251,7 +211,7 @@ const ExploreScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor="white" barStyle="dark-content" />
-        <HomeHeader />
+        <HomeHeader onPress={fetchPotentialMatches} />
         <View style={styles.centerContent}>
           <Ionicons name="search-outline" size={60} color="#FF6F00" />
           <Text style={styles.emptyText}>No potential matches found</Text>
@@ -269,7 +229,7 @@ const ExploreScreen = () => {
       <StatusBar backgroundColor="white" barStyle="dark-content" />
       
       {/* Header */}
-      <HomeHeader />
+      <HomeHeader onPress={fetchPotentialMatches} />
 
       {/* Loading overlay when refreshing */}
       {isRefreshing && (
@@ -280,76 +240,74 @@ const ExploreScreen = () => {
       )}
 
       {/* Swiper Card Container */}
-      <View style={styles.swiperWrapper}>
-        <Swiper
-          ref={swiperRef}
-          cards={potentialMatches}
-          renderCard={(card, cardIndex) => {
-            if (!card) return null;
-            return (
-              <SwipeCard 
-                profile={card} 
-                onSwipeLeft={() => swiperRef.current?.swipeLeft()} 
-                onSwipeRight={() => swiperRef.current?.swipeRight()} 
+      <View style={styles.container}>
+      <Swiper
+        ref={swiperRef}
+        cards={potentialMatches}
+        renderCard={(card, cardIndex) => {
+          if (!card) return null;
+
+          return (
+            <View style={styles.cardWrapper}>
+              {/* Card content */}
+              <SwipeCard
+                profile={card}
+                onSwipeLeft={() => swiperRef.current?.swipeLeft()}
+                onSwipeRight={() => swiperRef.current?.swipeRight()}
               />
-            );
-          }}
-          stackSize={3}
-          verticalSwipe={false}
-          backgroundColor="transparent"
-          containerStyle={styles.swiperContainer}
-          onSwipedLeft={handleSwipeLeft}
-          onSwipedRight={handleSwipeRight}
-          onSwipedAll={handleAllCardsSwipedOut}
-          cardIndex={0}
-          stackSeparation={14}
-          animateOverlayLabelsOpacity
-          animateCardOpacity
-          swipeBackCard
-          overlayLabels={{
-            left: {
-              title: 'NOPE',
-              style: {
-                label: {
-                  backgroundColor: '#FF5864',
-                  color: 'white',
-                  fontSize: 24,
-                  borderColor: '#FF5864',
-                  borderWidth: 1,
-                  padding: 10,
-                },
-                wrapper: {
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  justifyContent: 'flex-start',
-                  marginTop: 30,
-                  marginLeft: -30,
-                },
+            </View>
+          );
+        }}
+        stackSize={3}
+        verticalSwipe={false}
+        backgroundColor="transparent"
+        containerStyle={styles.swiperContainer}
+        onSwipedLeft={handleSwipeLeft}
+        onSwipedRight={handleSwipeRight}
+        onSwipedAll={handleAllCardsSwipedOut}
+        cardIndex={0}
+        stackSeparation={14}
+        animateOverlayLabelsOpacity
+        animateCardOpacity
+        swipeBackCard
+        overlayLabels={{
+          left: {
+            title: 'NOPE',
+            style: {
+              label: {
+                backgroundColor: '#FF5864',
+                color: 'white',
+                fontSize: 24,
+                borderColor: '#FF5864',
+                borderWidth: 1,
+                padding: 10,
+              },
+              wrapper: {
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+                justifyContent: 'flex-start',
+                marginTop: 30,
+                marginLeft: -30,
               },
             },
-            right: {
-              title: 'LIKE',
-              style: {
-                label: {
-                  backgroundColor: '#6A0DAD',
-                  color: 'white',
-                  fontSize: 24,
-                  borderColor: '#6A0DAD',
-                  borderWidth: 1,
-                  padding: 10,
-                },
-                wrapper: {
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-start',
-                  marginTop: 30,
-                  marginLeft: 30,
-                },
+          },
+          right: {
+            title: '',
+            style: {
+              wrapper: {
+                width: width * 0.4,
+                height: height * 0.1,
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                justifyContent: 'flex-start',
+                marginTop: 30,
+                marginLeft: 30,
               },
             },
-          }}
-        />
-      </View>
+          },
+        }}
+      />
+    </View>
 
       {/* Loading more indicator at bottom */}
       {isLoading && potentialMatches.length > 0 && (
@@ -382,6 +340,20 @@ const styles = StyleSheet.create({
     marginTop: height * 0.02, // Responsive margin-top
     marginBottom: height * 0.1, // Space for bottom navigation
     alignItems: 'center',
+  },
+
+  cardWrapper: {
+    position: 'relative',
+    height: '100%',
+  },
+  gradient: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 150,
+    zIndex: 0,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   swiperContainer: {
     width: width * 0.9, // Adjusts width based on screen size

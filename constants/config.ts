@@ -1,8 +1,5 @@
-const API_URL = 'https://cab2-223-185-39-20.ngrok-free.app/api';
+const API_URL = "https://64a9-223-185-37-241.ngrok-free.app/api";
 
-const SOCKET_URL = 'https://cab2-223-185-39-20.ngrok-free.app';
+const SOCKET_URL = "https://64a9-223-185-37-241.ngrok-free.app";
 
-export {
-    API_URL,
-    SOCKET_URL
-}
+export { API_URL, SOCKET_URL };

@@ -9,12 +9,36 @@ import { messageService } from '../../../services/api';
 import socketService from '../../../services/socketService';
 import { router } from 'expo-router';
 
+
+
+interface IMessage {
+  content: string;
+  messageType: string;
+  sentAt: string;
+  sentByMe: boolean;
+}
+
+interface IUser {
+  id: string;
+  name: string;
+  profilePicture: string;
+}
+
+interface IChat {
+  chatId: string;
+  lastActivity: string;
+  lastMessage: IMessage;
+  unreadCount: number;
+  user: IUser;
+}
+
+
 export default function ChatsScreen() {
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [chats, setChats] = useState<IChat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
+  const [filteredChats, setFilteredChats] = useState<IChat[]>([]);
 
   // Function to fetch chats from the backend
   const fetchChats = async () => {
@@ -22,19 +46,9 @@ export default function ChatsScreen() {
       setIsLoading(true);
       setError(null);
       const response = await messageService.getChats();
-      
-      // Transform the API response to match our Chat interface
-      const transformedChats = response.map((chat: any) => ({
-        id: chat.id,
-        name: chat.otherUser?.displayName || chat.otherUser?.firstName || 'Unknown',
-        message: chat.lastMessage?.content || 'No messages yet',
-        image: chat.otherUser?.avatarUrl || 'https://via.placeholder.com/50',
-        time: new Date(chat.lastMessage?.createdAt || chat.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        unreadCount: chat.unreadCount || 0,
-      }));
-      
-      setChats(transformedChats);
-      setFilteredChats(transformedChats);
+      console.log(response)
+      setChats(response);
+      setFilteredChats(response);
     } catch (err: any) {
       console.error('Error fetching chats:', err);
       setError(err.message || 'Failed to load chats');
@@ -90,7 +104,7 @@ export default function ChatsScreen() {
       setFilteredChats(chats);
     } else {
       const filtered = chats.filter(chat => 
-        chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+        chat.user.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredChats(filtered);
     }
@@ -101,15 +115,16 @@ export default function ChatsScreen() {
     router.push(`/chat/${chatId}`);
   };
 
-  const renderItem = ({ item }: { item: Chat }) => (
+  const renderItem = ({ item }: { item:   IChat }) => (
     <ChatListItem
-      id={item.id}
-      name={item.name}
-      message={item.message}
-      image={item.image}
-      time={item.time}
+      id={item.chatId}
+      key={item.chatId}
+      name={item.user.name}
+      message={item.lastMessage.content}
+      image={item.user.profilePicture}
+      time={new Date(item.lastActivity).toLocaleString()}
       unreadCount={item.unreadCount}
-      onPress={() => handleChatPress(item.id)}
+      onPress={() => handleChatPress(item.chatId)}
     />
   );
 
@@ -170,13 +185,10 @@ export default function ChatsScreen() {
         <View style={styles.searchContainer}>
           <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
         </View>
-        <View style={styles.recentContactsContainer}>
-          <RecentContacts />
-        </View>
         <FlatList
           data={filteredChats}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.chatId}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
         />
@@ -194,10 +206,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   searchContainer: {
-    padding: 16,
-  },
-  recentContactsContainer: {
-    marginBottom: 16,
+    padding: 10, 
+    paddingBottom: 0
   },
   listContent: {
     paddingBottom: 16,

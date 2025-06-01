@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Dimensions, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Dimensions, Pressable, Alert, Touchable, TouchableHighlight } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
@@ -15,7 +15,7 @@ const filterOptions = [
   { id: 'verification', name: 'Verified Profiles Only', icon: 'verified' }
 ];
 
-const HomeHeader = () => {
+const HomeHeader = ({ onPress }: { onPress: () => void }) => {
   const [isLanguageModalVisible, setLanguageModalVisible] = useState(false);
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(languages[0]);
@@ -30,20 +30,30 @@ const HomeHeader = () => {
       <View style={styles.leftSection}>
         <TouchableOpacity
           style={styles.filterButton}
-          onPress={() => setFilterModalVisible(true)}
+          onPress={() => 
+            {
+              Alert.alert("", "Filter feature is not available yet");
+              // setFilterModalVisible(true)
+            }
+          }
         >
           <MaterialIcons name="tune" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
       <View style={styles.centerSection}>
+        <TouchableOpacity onPress={onPress}> 
         <Text style={styles.logo}>CONNECT</Text>
+        </TouchableOpacity>
       </View>
       
       <View style={styles.rightSection}>
         <TouchableOpacity
           style={styles.languageButton}
-          onPress={() => setLanguageModalVisible(true)}
+          onPress={() => {
+            Alert.alert("", "Language feature is not available yet");
+            // setLanguageModalVisible(true)
+          }}
         >
           <Ionicons name="globe-outline" size={24} color="#333" />
           <Text style={styles.languageCode}>{selectedLanguage.code.toUpperCase()}</Text>

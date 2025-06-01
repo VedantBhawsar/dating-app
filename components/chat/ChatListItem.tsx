@@ -12,14 +12,14 @@ interface ChatListItemProps {
   onPress?: () => void;
 }
 
-export default function ChatListItem({ id, name, message, image, time, unreadCount, onPress }: ChatListItemProps) {
+export default function ChatListItem({ id, name, message, image, time, unreadCount,  onPress }: ChatListItemProps) {
   const router = useRouter();
   
   const handlePress = () => {
     if (onPress) {
       onPress();
     } else {
-      router.push(`/(modals)/chat/${id}`);
+      router.push(`/chat/${id}`);
     }
   };
   
