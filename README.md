@@ -1,4 +1,6 @@
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+# Dating App Frontend
+
+A modern, feature-rich dating application built with React Native and Expo, designed to provide a seamless and engaging user experience for finding meaningful connections.
 
 ## Screenshots
 
@@ -19,36 +21,116 @@ width="205"
 alt="Capture 4"
 src="https://github.com/diprajgirase/connect-dating-app-react-native/blob/main/assets/images/preview-profile.png">
 
+## Features
 
-## Get started
+- **User Authentication**: Secure login/signup with email and Google OAuth integration
+- **Comprehensive Onboarding Process**: Multi-step profile creation with detailed sections:
+  - Basic Information
+  - Caste & Community
+  - Salary & Occupation
+  - Lifestyle & Habits
+  - Personality & Interests
+  - Relationship Preferences
+  - Values & Future Plans
+- **Matching System**: Swipe-based interface for discovering potential matches
+- **Real-time Messaging**: Instant chat functionality with matched users
+- **Profile Management**: View and edit your profile information
+- **Notifications**: Stay updated on new matches and messages
 
-1. Install dependencies
+## Tech Stack
 
+- **Framework**: React Native with Expo
+- **Navigation**: Expo Router (file-based routing)
+- **UI Components**: React Native Paper, custom components
+- **State Management**: React Context API
+- **Networking**: Axios for API requests
+- **Real-time Communication**: Socket.IO
+- **Authentication**: Expo Auth Session, Secure Store
+- **Media Handling**: Expo Image Picker
+
+## Prerequisites
+
+- Node.js (v16+)
+- npm or yarn
+- Expo CLI
+- iOS Simulator (for Mac users) or Android Emulator
+- Expo Go app (for physical device testing)
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/VedantBhawsar/dating-app.git
+   cd dating-app
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Start the app
-
-   ```bash
-    npx expo start
+3. Set up environment variables:
+   Create a `.env` file in the root directory with the following variables:
+   ```
+   API_URL=http://your-backend-url:3000
+   GOOGLE_CLIENT_ID=your_google_client_id
    ```
 
-In the output, you'll find options to open the app in a
+## Running the Application
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+```bash
+# Start the Expo development server
+npx expo start
+```
+
+In the output, you'll find options to open the app in a:
+
+- [Development build](https://docs.expo.dev/develop/development-builds/introduction/)
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- [Expo Go](https://expo.dev/go) app on your physical device
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Project Structure
 
+- `app/` - Main application code using file-based routing
+  - `auth/` - Authentication screens
+  - `onboarding/` - Multi-step profile creation process
+  - `(tabs)/` - Main app tabs (Home, Matches, Chat, Profile)
+  - `chat/` - Chat functionality
+  - `profile/` - Profile management
+- `components/` - Reusable UI components
+- `constants/` - App constants and theme configuration
+- `services/` - API services and utilities
+- `assets/` - Images, fonts, and other static assets
 
-## Learn more
+## Backend Integration
 
-To learn more about developing your project with Expo, look at the following resources:
+This frontend is designed to work with the [Dating App Backend](https://github.com/diprajgirase/dating-app-backend) built with Node.js, Express, and Prisma.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Testing
 
+```bash
+npm test
+```
 
+## Code Quality
+
+```bash
+npm run lint
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the ISC License.
+
+## Contact
+
+Project Link: [https://github.com/VedantBhawsar/dating-app](https://github.com/VedantBhawsar/dating-app)
