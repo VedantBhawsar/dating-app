@@ -1,809 +1,290 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Dimensions, Switch } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  TextInput,
+  Alert,
+  Dimensions,
+  Switch,
+  ActivityIndicator,
+  Platform,
+  Linking,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+// Notifications are not fully supported in Expo Go from SDK 53 onwards
+// Will be re-implemented with development builds
+import { useRouter } from "expo-router";
+import {
+  profileService,
+  authService,
+  settingsService,
+} from "../../../services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  UserSettings,
+  NotificationSettings,
+  PrivacySettings,
+  AccountSettings,
+  defaultUserSettings,
+} from "../../../models/settings";
+import { API_URL } from "@/constants/config";
 
 interface ProfileData {
   name: string;
+  bio: string;
+  isHidden: boolean;
   email: string;
+  firstName: string;
+  lastName: string;
+  gender: string;
   phone: string;
-  education: string;
-  occupation: string;
   location: string;
-  income: string;
   age: string;
   height: string;
+  maritalStatus: string;
+  children: string;
+  _birthDate?: string;
+  religion: string;
   clanGotra: string;
   gan: string;
   nakshatra: string;
+  community: string;
+  education: string;
+  highestDegree: string;
+  occupation: string;
+  employedIn: string;
+  companyName: string;
+  jobTitle: string;
+  income: string;
+  diet: string;
+  smoking: string;
+  drinking: string;
+  livingArrangement: string;
+  hasDisability: boolean;
+  disabilityDetails: string;
+  hobbies: string;
   interests: string;
+  personalityTraits: string;
+  musicTaste: string;
+  movieTaste: string;
+  sportsInterest: string;
+  travelStyle: string;
   isVerified: boolean;
   verificationDate?: string;
-  [key: string]: string | boolean | undefined;
+  profileImage?: string; 
 }
 
 interface GalleryImage {
+  id?: string;
   uri: string;
 }
 
-interface SettingsData {
-  notifications: {
-    messages: boolean;
-    matches: boolean;
-    profileViews: boolean;
-    [key: string]: boolean;
+interface BackendProfileResponse {
+  profile?: {
+    id?: string;
+    userId?: string;
+    displayName?: string;
+    bio?: string;
+    isHidden?: boolean;
+    profilePictureUrl?: string;
+    galleryUrls?: { id?: string; url: string }[];
+    email?: string;
   };
-  privacy: {
-    profileVisibility: boolean;
-    showOnline: boolean;
-    showLastSeen: boolean;
-    [key: string]: boolean;
+  basicInfo?: {
+    firstName?: string;
+    lastName?: string;
+    gender?: string;
+    birthDate?: string;
+    location?: {
+      city?: string;
+      state?: string;
+      country?: string;
+      fullAddress?: string;
+    };
+    height?: number;
+    maritalStatus?: string;
+    children?: string;
+    phone?: string;
   };
-  account: {
-    emailNotifications: boolean;
-    darkMode: boolean;
-    [key: string]: boolean;
+  casteInfo?: {
+    religion?: string;
+    caste?: string;
+    subCaste?: string;
+    motherTongue?: string;
+    community?: string;
+  };
+  occupationInfo?: {
+    education?: string;
+    highestDegree?: string;
+    occupation?: string;
+    employedIn?: string;
+    companyName?: string;
+    jobTitle?: string;
+    annualIncome?: string;
+  };
+  lifestyleInfo?: {
+    diet?: string;
+    smoking?: string;
+    drinking?: string;
+    livingArrangement?: string;
+    hasDisability?: boolean;
+    disabilityDetails?: string;
+  };
+  personalityInfo?: {
+    hobbies?: string[];
+    interests?: string[];
+    personalityTraits?: string[];
+    musicTaste?: string[];
+    movieTaste?: string[];
+    sportsInterest?: string[];
+    travelStyle?: string;
+  };
+  verificationStatus?: {
+    isVerified: boolean;
+    verifiedOn?: string;
   };
 }
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-// More precise responsive scaling
-const scale = Math.min(screenWidth / 390, 1.2); // Using iPhone 14 as base width with a cap of 1.2
-const normalizeFont = (size: number) => Math.round(size * Math.min(scale, 1)); // Cap font scaling at 1
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+const scale = Math.min(screenWidth / 390, 1.2);
+const normalizeFont = (size: number) => Math.round(size * Math.min(scale, 1));
 const normalizeSpacing = (size: number) => Math.round(size * scale);
 
-// Calculate dynamic sizes based on screen dimensions
-const dynamicImageSize = Math.min(screenWidth * 0.28, 120); // Cap profile image size
-const dynamicGalleryImageSize = Math.min(screenWidth * 0.2, 100); // Cap gallery image size
-const dynamicHeaderHeight = Math.min(screenHeight * 0.28, 280); // Cap header height
-
-const ProfileScreen = () => {
-  const router = useRouter();
-  const [isEditing, setIsEditing] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editField, setEditField] = useState<keyof ProfileData | null>(null);
-  const [selectedField, setSelectedField] = useState<keyof ProfileData | null>(null);
-  const [profileImage, setProfileImage] = useState('https://plus.unsplash.com/premium_photo-1673734626655-0c1dc4be0e9c?q=80&w=1887');
-  const [profileData, setProfileData] = useState<ProfileData>({
-    name: 'Sam ALtman',
-    email: 'dipraj@example.com',
-    phone: '9898712132',
-    education: 'B.E. Computer Science',
-    occupation: 'Software Developer',
-    location: 'Mumbai, India',
-    income: '10 LPA',
-    age: '24',
-    height: "5'9",
-    clanGotra: 'Rajput',
-    gan: 'Dev',
-    nakshatra: 'Ashwini',
-    interests: 'Coding, Biking, Sci-Fi Movies',
-    isVerified: true,
-    verificationDate: '2024-03-15'
-  });
-
-  const [inputValue, setInputValue] = useState('');
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([
-    { uri: 'https://images.unsplash.com/photo-1531891437562-4301cf35b7e4?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-    { uri: 'https://images.unsplash.com/photo-1480455624313-e29b44bbfde1?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-    { uri: 'https://images.unsplash.com/photo-1539125530496-3ca408f9c2d9?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-    { uri: 'https://plus.unsplash.com/premium_photo-1689977968861-9c91dbb16049?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' }
-  ]);
-
-  const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
-  const [selectedImage, setSelectedImage] = useState('');
-  const [editMode, setEditMode] = useState<'none' | 'profile' | 'gallery'>('none');
-
-  const [settingsVisible, setSettingsVisible] = useState(false);
-  const [settingsData, setSettingsData] = useState<SettingsData>({
-    notifications: {
-      messages: true,
-      matches: true,
-      profileViews: false,
-    },
-    privacy: {
-      profileVisibility: true,
-      showOnline: true,
-      showLastSeen: true,
-    },
-    account: {
-      emailNotifications: true,
-      darkMode: false,
-    },
-  });
-
-  const [currentSettingsTab, setCurrentSettingsTab] = useState<'notifications' | 'privacy' | 'account'>('notifications');
-
-  const [orientation, setOrientation] = useState('portrait');
-
-  const [editOptionsVisible, setEditOptionsVisible] = useState(false);
-
-  useEffect(() => {
-    // Handle orientation changes
-    const updateLayout = () => {
-      const { width, height } = Dimensions.get('window');
-      setOrientation(width > height ? 'landscape' : 'portrait');
-    };
-
-    const subscription = Dimensions.addEventListener('change', updateLayout);
-    return () => subscription.remove();
-  }, []);
-
-  // Adjust layout based on orientation
-  const containerStyle = [
-    styles.container,
-    orientation === 'landscape' && styles.containerLandscape
-  ];
-
-  const headerStyle = [
-    styles.headerWrapper,
-    orientation === 'landscape' && styles.headerWrapperLandscape
-  ];
-
-  const galleryStyle = [
-    styles.galleryContainer,
-    orientation === 'landscape' && styles.galleryContainerLandscape
-  ];
-
-  const handleEditClick = () => {
-    if (editMode !== 'none') {
-      // Save changes and exit edit mode
-      setEditMode('none');
-      setSelectedField(null);
-      setModalVisible(false);
-    } else {
-      // Show edit options modal
-      setEditOptionsVisible(true);
-    }
-  };
-
-  const handleEditOptionSelect = (option: 'profile' | 'gallery') => {
-    setEditMode(option);
-    setIsEditing(true);
-    setEditOptionsVisible(false);
-  };
-
-  const handleImagePress = (uri: string) => {
-    setSelectedImage(uri);
-    setImagePreviewVisible(true);
-  };
-
-  const handleFieldEdit = (field: keyof ProfileData) => {
-    if (editMode === 'profile') {
-      setEditField(field);
-      const value = profileData[field];
-      // Only allow editing string fields
-      if (typeof value === 'string') {
-        setInputValue(value);
-        setModalVisible(true);
-      }
-    }
-  };
-
-  const saveEdit = () => {
-    if (editField) {
-      // Only update if the field is a string type
-      if (typeof profileData[editField] === 'string') {
-        setProfileData({ ...profileData, [editField]: inputValue });
-      }
-    }
-    setModalVisible(false);
-    setSelectedField(null);
-  };
-
-  const pickImage = async (isProfilePic = false) => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      if (isProfilePic) {
-        setProfileImage(result.assets[0].uri);
-      } else {
-        setGalleryImages([...galleryImages, { uri: result.assets[0].uri }]);
-      }
-    }
-  };
-
-  const removeImage = (index: number) => {
-    if (editMode === 'gallery') {
-      const newGalleryImages = [...galleryImages];
-      newGalleryImages.splice(index, 1);
-      setGalleryImages(newGalleryImages);
-    }
-  };
-
-  const handleSettingsPress = () => {
-    setSettingsVisible(true);
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: () => {
-            // Handle logout logic here
-            router.replace("/(auth)/login" as any);
-          }
-        }
-      ]
-    );
-  };
-
-  const toggleSetting = (category: keyof SettingsData, setting: string) => {
-    setSettingsData(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [setting]: !prev[category][setting]
-      }
-    }));
-  };
-
-  const renderSettingsContent = () => {
-    switch (currentSettingsTab) {
-      case 'notifications':
-        return (
-          <View style={styles.settingsSection}>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>New Messages</Text>
-              <Switch
-                value={settingsData.notifications.messages}
-                onValueChange={() => toggleSetting('notifications', 'messages')}
-                trackColor={{ false: '#767577', true: '#FF6F00' }}
-                thumbColor={settingsData.notifications.messages ? '#fff' : '#f4f3f4'}
-              />
-            </View>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>New Matches</Text>
-              <Switch
-                value={settingsData.notifications.matches}
-                onValueChange={() => toggleSetting('notifications', 'matches')}
-                trackColor={{ false: '#767577', true: '#FF6F00' }}
-                thumbColor={settingsData.notifications.matches ? '#fff' : '#f4f3f4'}
-              />
-            </View>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Profile Views</Text>
-              <Switch
-                value={settingsData.notifications.profileViews}
-                onValueChange={() => toggleSetting('notifications', 'profileViews')}
-                trackColor={{ false: '#767577', true: '#FF6F00' }}
-                thumbColor={settingsData.notifications.profileViews ? '#fff' : '#f4f3f4'}
-              />
-            </View>
-          </View>
-        );
-      case 'privacy':
-        return (
-          <View style={styles.settingsSection}>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Profile Visibility</Text>
-              <Switch
-                value={settingsData.privacy.profileVisibility}
-                onValueChange={() => toggleSetting('privacy', 'profileVisibility')}
-                trackColor={{ false: '#767577', true: '#FF6F00' }}
-                thumbColor={settingsData.privacy.profileVisibility ? '#fff' : '#f4f3f4'}
-              />
-            </View>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Show Online Status</Text>
-              <Switch
-                value={settingsData.privacy.showOnline}
-                onValueChange={() => toggleSetting('privacy', 'showOnline')}
-                trackColor={{ false: '#767577', true: '#FF6F00' }}
-                thumbColor={settingsData.privacy.showOnline ? '#fff' : '#f4f3f4'}
-              />
-            </View>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Show Last Seen</Text>
-              <Switch
-                value={settingsData.privacy.showLastSeen}
-                onValueChange={() => toggleSetting('privacy', 'showLastSeen')}
-                trackColor={{ false: '#767577', true: '#FF6F00' }}
-                thumbColor={settingsData.privacy.showLastSeen ? '#fff' : '#f4f3f4'}
-              />
-            </View>
-          </View>
-        );
-      case 'account':
-        return (
-          <View style={styles.settingsSection}>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Email Notifications</Text>
-              <Switch
-                value={settingsData.account.emailNotifications}
-                onValueChange={() => toggleSetting('account', 'emailNotifications')}
-                trackColor={{ false: '#767577', true: '#FF6F00' }}
-                thumbColor={settingsData.account.emailNotifications ? '#fff' : '#f4f3f4'}
-              />
-            </View>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Dark Mode</Text>
-              <Switch
-                value={settingsData.account.darkMode}
-                onValueChange={() => toggleSetting('account', 'darkMode')}
-                trackColor={{ false: '#767577', true: '#FF6F00' }}
-                thumbColor={settingsData.account.darkMode ? '#fff' : '#f4f3f4'}
-              />
-            </View>
-            <TouchableOpacity style={styles.dangerButton} onPress={handleLogout}>
-              <Text style={styles.dangerButtonText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const formatFieldName = (field: keyof ProfileData): string => {
-    return String(field).replace(/([A-Z])/g, ' $1').toUpperCase();
-  };
-
-  const handleVerificationInfoPress = () => {
-    Alert.alert(
-      "Profile Verification",
-      "Profile verification is done by our admin team to ensure authenticity. Verified profiles get higher visibility and trust from other users.",
-      [{ text: "OK", style: "default" }]
-    );
-  };
-
-  return (
-    <ScrollView contentContainerStyle={containerStyle}>
-      {/* Edit Button */}
-      <TouchableOpacity 
-        style={[
-          styles.settingsButton, 
-          { left: 20, right: undefined },
-          editMode !== 'none' && styles.editingButton
-        ]} 
-        onPress={handleEditClick}
-      >
-        <Ionicons 
-          name="create-outline" 
-          size={24} 
-          color={editMode !== 'none' ? "#fff" : "#333"} 
-        />
-      </TouchableOpacity>
-
-      <View style={headerStyle}>
-        <TouchableOpacity style={styles.settingsButton} onPress={handleSettingsPress}>
-          <Ionicons name="settings-outline" size={24} color="black" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={() => editMode === 'profile' ? pickImage(true) : handleImagePress(profileImage)} 
-          style={styles.profileImageContainer}
-        >
-          <Image
-            source={{ uri: profileImage }}
-            style={styles.profileImage}
-          />
-          {editMode === 'profile' && (
-            <View style={styles.editImageOverlay}>
-              <Ionicons name="camera" size={24} color="white" />
-              <Text style={styles.editImageText}>Change Photo</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        
-        <Text style={styles.name}>{profileData.name}</Text>
-        <Text style={styles.subText}>Active since - Jul, 2019</Text>
-
-        <View style={styles.verificationWrapper}>
-          <View style={[
-            styles.verificationContainer,
-            { backgroundColor: profileData.isVerified ? '#E8F5E9' : '#FFF3E0' }
-          ]}>
-            <View style={styles.verificationBadge}>
-              <Ionicons 
-                name={profileData.isVerified ? "shield-checkmark" : "shield-outline"} 
-                size={28} 
-                color={profileData.isVerified ? "#2E7D32" : "#FF8F00"} 
-              />
-            </View>
-            <View style={styles.verificationTextContainer}>
-              <Text style={[
-                styles.verificationStatus,
-                { color: profileData.isVerified ? "#2E7D32" : "#FF8F00" }
-              ]}>
-                {profileData.isVerified ? "Verified Profile" : "Verification Pending"}
-              </Text>
-            </View>
-            <TouchableOpacity 
-              style={styles.infoButton}
-              onPress={handleVerificationInfoPress}
-            >
-              <Ionicons 
-                name="information-circle-outline" 
-                size={24} 
-                color={profileData.isVerified ? "#2E7D32" : "#FF8F00"} 
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* Gallery Section */}
-      <View style={galleryStyle}>
-        <View style={styles.galleryHeadingContainer}>
-          <Text style={styles.galleryHeading}>Image Gallery</Text>
-          {editMode === 'gallery' && (
-            <TouchableOpacity onPress={() => pickImage(false)} style={styles.addImageButton}>
-              <Ionicons name="add-circle-outline" size={24} color="#FF6F00" />
-              <Text style={styles.addImageText}>Add Image</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.galleryContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {galleryImages.map((image, index) => (
-              <TouchableOpacity 
-                key={index} 
-                style={styles.imageContainer}
-                onPress={() => handleImagePress(image.uri)}
-              >
-                <Image source={{ uri: image.uri }} style={styles.galleryImage} />
-                {editMode === 'gallery' && (
-                  <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={() => removeImage(index)}
-                  >
-                    <Ionicons name="close-circle" size={28} color="#FF4D4D" />
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-
-      <View style={styles.infoSection}>
-        <Text style={styles.sectionHeading}>Personal Information</Text>
-        {editMode === 'profile' && (
-          <Text style={styles.editHint}>Tap any field to edit</Text>
-        )}
-      </View>
-
-      <View style={styles.infoCard}>
-        {Object.keys(profileData).map((key) => (
-          key !== 'name' && key !== 'isVerified' && key !== 'verificationDate' && (
-            <TouchableOpacity
-              key={key}
-              style={[
-                styles.infoRow, 
-                selectedField === key && styles.selectedRow,
-                editMode === 'profile' && styles.editableRow
-              ]}
-              onPress={() => handleFieldEdit(key as keyof ProfileData)}
-            >
-              <View style={styles.infoContent}>
-                <Text style={styles.label}>
-                  {formatFieldName(key as keyof ProfileData)}:
-                </Text>
-                <Text style={[
-                  styles.infoText, 
-                  editMode === 'profile' && styles.editableText
-                ]}>
-                  {profileData[key as keyof ProfileData]}
-                  {editMode === 'profile' && (
-                    <Ionicons name="pencil" size={16} color="#FF6F00" style={styles.editIcon} />
-                  )}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )
-        ))}
-      </View>
-
-      {/* Edit Field Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalContainer} 
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
-          <View 
-            style={styles.modalContent}
-            onStartShouldSetResponder={() => true}
-            onTouchEnd={(e) => e.stopPropagation()}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Edit {editField && formatFieldName(editField as keyof ProfileData)}
-              </Text>
-              <TouchableOpacity 
-                style={styles.closeModalButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <TextInput
-              style={styles.input}
-              value={inputValue}
-              onChangeText={setInputValue}
-              autoFocus
-              placeholder={`Enter ${editField && formatFieldName(editField as keyof ProfileData)}`}
-            />
-
-            <View style={[styles.modalButtons, { marginTop: 20 }]}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={[styles.modalButtonText, styles.cancelButtonText]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.saveButton]} 
-                onPress={saveEdit}
-              >
-                <Text style={[styles.modalButtonText, styles.saveButtonText]}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Image Preview Modal */}
-      <Modal visible={imagePreviewVisible} transparent animationType="fade">
-        <View style={styles.imagePreviewContainer}>
-          <TouchableOpacity 
-            style={styles.closePreviewButton}
-            onPress={() => setImagePreviewVisible(false)}
-          >
-            <Ionicons name="close" size={30} color="white" />
-          </TouchableOpacity>
-          <Image
-            source={{ uri: selectedImage }}
-            style={styles.previewImage}
-            resizeMode="contain"
-          />
-        </View>
-      </Modal>
-
-      {/* Settings Modal */}
-      <Modal
-        visible={settingsVisible}
-        animationType="slide"
-        transparent={true}
-      >
-        <View style={styles.settingsModalContainer}>
-          <View style={styles.settingsModalContent}>
-            <View style={styles.settingsHeader}>
-              <Text style={styles.settingsTitle}>Settings</Text>
-              <TouchableOpacity 
-                style={styles.closeSettingsButton}
-                onPress={() => setSettingsVisible(false)}
-              >
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.settingsTabs}>
-              <TouchableOpacity 
-                style={[
-                  styles.settingsTab,
-                  currentSettingsTab === 'notifications' && styles.activeSettingsTab
-                ]}
-                onPress={() => setCurrentSettingsTab('notifications')}
-              >
-                <Text style={[
-                  styles.settingsTabText,
-                  currentSettingsTab === 'notifications' && styles.activeSettingsTabText
-                ]}>Notifications</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[
-                  styles.settingsTab,
-                  currentSettingsTab === 'privacy' && styles.activeSettingsTab
-                ]}
-                onPress={() => setCurrentSettingsTab('privacy')}
-              >
-                <Text style={[
-                  styles.settingsTabText,
-                  currentSettingsTab === 'privacy' && styles.activeSettingsTabText
-                ]}>Privacy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[
-                  styles.settingsTab,
-                  currentSettingsTab === 'account' && styles.activeSettingsTab
-                ]}
-                onPress={() => setCurrentSettingsTab('account')}
-              >
-                <Text style={[
-                  styles.settingsTabText,
-                  currentSettingsTab === 'account' && styles.activeSettingsTabText
-                ]}>Account</Text>
-              </TouchableOpacity>
-            </View>
-
-            {renderSettingsContent()}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Edit Options Modal */}
-      <Modal
-        visible={editOptionsVisible}
-        animationType="slide"
-        transparent={true}
-      >
-        <View style={styles.settingsModalContainer}>
-          <View style={styles.settingsModalContent}>
-            <View style={styles.settingsHeader}>
-              <Text style={styles.settingsTitle}>Edit Profile</Text>
-              <TouchableOpacity 
-                style={styles.closeSettingsButton}
-                onPress={() => setEditOptionsVisible(false)}
-              >
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.editOptionsContainer}>
-              <TouchableOpacity 
-                style={styles.editOptionButton}
-                onPress={() => handleEditOptionSelect('profile')}
-              >
-                <View style={styles.editOptionIcon}>
-                  <Ionicons name="person-outline" size={24} color="#FF6F00" />
-                </View>
-                <View style={styles.editOptionContent}>
-                  <Text style={styles.editOptionTitle}>Profile Information</Text>
-                  <Text style={styles.editOptionDescription}>Edit your personal details and information</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#999" />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.editOptionButton}
-                onPress={() => handleEditOptionSelect('gallery')}
-              >
-                <View style={styles.editOptionIcon}>
-                  <Ionicons name="images-outline" size={24} color="#FF6F00" />
-                </View>
-                <View style={styles.editOptionContent}>
-                  <Text style={styles.editOptionTitle}>Photo Gallery</Text>
-                  <Text style={styles.editOptionDescription}>Manage your profile photos and gallery</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#999" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </ScrollView>
-  );
-};
+const dynamicImageSize = Math.min(screenWidth * 0.28, 120);
+const dynamicGalleryImageSize = Math.min(screenWidth * 0.2, 100);
+const dynamicHeaderHeight = Math.min(screenHeight * 0.28, 280);
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: '#FFF',
-    alignItems: 'center'
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFF",
   },
-  editButtonTopLeft: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-    zIndex: 10,
+  loadingText: { marginTop: 10, fontSize: normalizeFont(16), color: "#555" },
+  errorText: {
+    marginTop: 10,
+    fontSize: normalizeFont(16),
+    color: "red",
+    textAlign: "center",
+    paddingHorizontal: 20,
   },
-  editingButton: {
-    backgroundColor: '#FF6F00',
-    borderColor: '#FF6F00',
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: "#FF6F00",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
+  retryButtonText: {
+    color: "#fff",
+    fontSize: normalizeFont(16),
+    fontWeight: "bold",
+  },
+  inlineLoadingIndicator: {
+    position: "absolute",
+    top: dynamicHeaderHeight / 2,
+    left: screenWidth / 2 - 15,
+    zIndex: 20,
+    backgroundColor: "rgba(255,255,255,0.7)",
+    padding: 5,
+    borderRadius: 20,
+  },
+  galleryContainerInternal: {
+    /*width: '100%',*/
+  }, // contentContainerStyle for horizontal scroll
+  emptyGalleryText: {
+    fontSize: normalizeFont(14),
+    color: "#777",
+    textAlign: "center",
+    paddingVertical: normalizeSpacing(20),
+    width: screenWidth - normalizeSpacing(40),
+  },
+  editImageText: { color: "white", fontSize: normalizeFont(10), marginTop: 2 },
+  container: { flexGrow: 1, backgroundColor: "#FFF", alignItems: "center" },
+  editingButton: { backgroundColor: "#FF6F00", borderColor: "#FF6F00" },
   settingsButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: "absolute",
+    top:
+      normalizeSpacing(15) + (Dimensions.get("window").height > 800 ? 20 : 0),
+    backgroundColor: "#fff",
+    padding: normalizeSpacing(8),
+    borderRadius: normalizeSpacing(20),
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: '#ccc',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    borderColor: "#ccc",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
     elevation: 2,
     zIndex: 10,
   },
   headerWrapper: {
-    width: '100%',
+    width: "100%",
     minHeight: dynamicHeaderHeight,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    position: 'relative',
-    paddingTop: normalizeSpacing(12),
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    position: "relative",
+    paddingTop: normalizeSpacing(65),
     paddingBottom: normalizeSpacing(16),
   },
-  profileImageContainer: {
-    position: 'relative',
-    marginTop: normalizeSpacing(32)
-  },
+  profileImageContainer: { position: "relative" },
   profileImage: {
     width: dynamicImageSize,
     height: dynamicImageSize,
     borderRadius: dynamicImageSize / 2,
     borderWidth: 3,
-    borderColor: '#000',
+    borderColor: "#FF6F00",
   },
   editImageOverlay: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    height: dynamicImageSize * 0.4,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    height: dynamicImageSize * 0.3,
     borderBottomLeftRadius: dynamicImageSize / 2,
     borderBottomRightRadius: dynamicImageSize / 2,
-    justifyContent: 'center',
-    alignItems: 'center'
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "column",
   },
   name: {
     fontSize: normalizeFont(22),
-    fontWeight: 'bold',
-    color: '#000',
-    marginTop: normalizeSpacing(8)
+    fontWeight: "bold",
+    color: "#000",
+    marginTop: normalizeSpacing(8),
   },
   subText: {
     fontSize: normalizeFont(14),
-    color: '#555',
-    marginBottom: normalizeSpacing(10)
+    textAlign:'center', 
+    paddingHorizontal: normalizeSpacing(5),
+    color: "#555",
+    marginBottom: normalizeSpacing(10),
   },
   verificationWrapper: {
-    width: '92%',
+    width: "92%",
     maxWidth: 400,
-    marginTop: 8,
-    marginBottom: 4,
-    alignSelf: 'center',
+    marginTop: normalizeSpacing(8),
+    marginBottom: normalizeSpacing(4),
+    alignSelf: "center",
   },
   verificationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: normalizeSpacing(12),
     paddingVertical: normalizeSpacing(8),
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -813,10 +294,10 @@ const styles = StyleSheet.create({
     width: normalizeSpacing(32),
     height: normalizeSpacing(32),
     borderRadius: normalizeSpacing(16),
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    backgroundColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -824,58 +305,70 @@ const styles = StyleSheet.create({
   },
   verificationTextContainer: {
     flex: 1,
-    marginLeft: 12,
-    marginRight: 6,
+    marginLeft: normalizeSpacing(10),
+    marginRight: normalizeSpacing(5),
   },
   verificationStatus: {
-    fontSize: normalizeFont(16),
-    fontWeight: '700',
+    fontSize: normalizeFont(15),
+    fontWeight: "700",
     letterSpacing: 0.3,
   },
   infoButton: {
-    padding: 6,
-    backgroundColor: 'white',
-    borderRadius: 16,
-    shadowColor: '#000',
+    padding: normalizeSpacing(5),
+    backgroundColor: "white",
+    borderRadius: normalizeSpacing(12),
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 1,
   },
   galleryHeadingContainer: {
-    width: '90%',
-    marginTop: 6,
-    marginBottom: 4,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    width: "90%",
+    marginTop: normalizeSpacing(10),
+    marginBottom: normalizeSpacing(6),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   galleryHeading: {
     fontSize: normalizeFont(18),
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   addImageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: normalizeSpacing(4),
+    paddingHorizontal: normalizeSpacing(8),
+    backgroundColor: "#FFF5E6",
+    borderRadius: 20,
   },
   addImageText: {
-    color: '#FF6F00',
-    marginLeft: 5,
-    fontWeight: '600',
+    color: "#FF6F00",
+    marginLeft: normalizeSpacing(4),
+    fontWeight: "600",
+    fontSize: normalizeFont(13),
   },
   galleryContainer: {
-    width: '100%',
+    width: "100%",
     marginTop: normalizeSpacing(6),
     marginBottom: normalizeSpacing(12),
     paddingHorizontal: normalizeSpacing(10),
   },
   imageContainer: {
-    position: 'relative',
+    position: "relative",
     marginRight: normalizeSpacing(12),
     marginBottom: normalizeSpacing(6),
     marginLeft: normalizeSpacing(4),
     marginTop: normalizeSpacing(8),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+    backgroundColor: "#FFF",
+    borderRadius: 12,
   },
   galleryImage: {
     width: dynamicGalleryImageSize,
@@ -883,17 +376,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   removeImageButton: {
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: "absolute",
+    top: -normalizeSpacing(8),
+    right: -normalizeSpacing(8),
+    backgroundColor: "white",
+    borderRadius: normalizeSpacing(14),
+    width: normalizeSpacing(28),
+    height: normalizeSpacing(28),
+    alignItems: "center",
+    justifyContent: "center",
     padding: 0,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -901,297 +394,2081 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   infoSection: {
-    flexDirection: 'row',
-    width: '90%',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20
+    flexDirection: "row",
+    width: "90%",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: normalizeSpacing(20),
+    marginBottom: normalizeSpacing(5),
   },
   sectionHeading: {
     fontSize: normalizeFont(18),
-    fontWeight: 'bold',
-    color: '#000'
+    fontWeight: "bold",
+    color: "#000",
   },
   infoCard: {
-    width: '90%',
-    marginTop: 20,
+    width: "90%",
+    marginTop: normalizeSpacing(10),
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingBottom: normalizeSpacing(10),
   },
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: normalizeSpacing(12),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: normalizeSpacing(14),
     borderBottomWidth: 1,
-    borderColor: '#EEE',
+    borderColor: "#F0F0F0",
   },
-  selectedRow: {
-    backgroundColor: '#f0f0f0',
-  },
+  selectedRow: { backgroundColor: "#FFF5E6" },
   infoContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    alignItems: "center",
+    paddingHorizontal: normalizeSpacing(12),
   },
   label: {
     fontSize: normalizeFont(14),
-    fontWeight: 'bold',
-    color: '#555',
-    flex: 1,
+    fontWeight: "600",
+    color: "#444",
+    flex: 0.45,
   },
   infoText: {
     fontSize: normalizeFont(14),
-    color: '#333',
-    flex: 1,
-    textAlign: 'right',
+    color: "#333",
+    flex: 0.55,
+    textAlign: "right",
   },
-  editableText: {
-    color: '#FF6F00',
-  },
-  editIcon: {
-    marginLeft: 5,
-  },
+  editableText: { color: "#FF6F00", fontWeight: "500" },
+  editIcon: { marginLeft: normalizeSpacing(5) },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
-    minHeight: '40%',
+    paddingHorizontal: normalizeSpacing(20),
+    paddingTop: normalizeSpacing(20),
+    paddingBottom: normalizeSpacing(30),
+    minHeight: "35%",
+    maxHeight: "60%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: normalizeSpacing(20),
   },
   modalTitle: {
-    fontSize: normalizeFont(20),
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: normalizeFont(18),
+    fontWeight: "bold",
+    color: "#333",
   },
-  closeModalButton: {
-    padding: 8,
-  },
+  closeModalButton: { padding: normalizeSpacing(6) },
   input: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 15,
-    fontSize: normalizeFont(16),
-    backgroundColor: '#F8F8F8',
-    width: '100%',
-    marginBottom: 20,
-  },
+    borderColor: "#E0E0E0",
+    borderRadius: 10,
+    paddingHorizontal: normalizeSpacing(12),
+    paddingVertical: normalizeSpacing(10),
+    fontSize: normalizeFont(15),
+    backgroundColor: "#F9F9F9",
+    width: "100%",
+    marginBottom: normalizeSpacing(20),
+    minHeight: normalizeSpacing(45),
+  }, // Added minHeight
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: normalizeSpacing(10),
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-  },
-  saveButton: {
-    backgroundColor: '#FF6F00',
-  },
-  modalButtonText: {
-    fontSize: normalizeFont(16),
-    fontWeight: '600',
-  },
-  cancelButtonText: {
-    color: '#666',
-  },
-  saveButtonText: {
-    color: '#fff',
-  },
-  editHint: {
-    fontSize: 12,
-    color: '#FF6F00',
-    fontStyle: 'italic',
-  },
-  editableRow: {
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    marginBottom: 8,
-    padding: 12,
-    shadowColor: '#000',
+    paddingVertical: normalizeSpacing(12),
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
-  editImageText: {
-    color: 'white',
-    fontSize: 12,
-    marginTop: 4,
+  cancelButton: { backgroundColor: "#E0E0E0" },
+  saveButton: { backgroundColor: "#FF6F00" },
+  modalButtonText: { fontSize: normalizeFont(15), fontWeight: "600" },
+  cancelButtonText: { color: "#333" },
+  saveButtonText: { color: "#fff" },
+  editHint: {
+    fontSize: normalizeFont(12),
+    color: "#FF6F00",
+    fontStyle: "italic",
   },
+  editableRow: { backgroundColor: "#FFF9F2", borderRadius: 8 },
   imagePreviewContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  previewImage: {
-    width: screenWidth,
-    height: screenHeight * 0.8,
-  },
+  previewImage: { width: screenWidth, height: screenHeight * 0.7 },
   closePreviewButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
+    position: "absolute",
+    top: normalizeSpacing(40),
+    right: normalizeSpacing(20),
     zIndex: 10,
-    padding: 10,
+    padding: normalizeSpacing(8),
+    backgroundColor: "rgba(0,0,0,0.3)",
+    borderRadius: 20,
   },
   settingsModalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   settingsModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
-    minHeight: '50%',
-    maxHeight: '90%',
+    paddingHorizontal: normalizeSpacing(15),
+    paddingTop: normalizeSpacing(15),
+    paddingBottom: normalizeSpacing(25),
+    minHeight: "50%",
+    maxHeight: "90%",
   },
   settingsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: normalizeSpacing(15),
   },
   settingsTitle: {
-    fontSize: normalizeFont(24),
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: normalizeFont(20),
+    fontWeight: "bold",
+    color: "#333",
   },
-  closeSettingsButton: {
-    padding: 5,
-  },
+  closeSettingsButton: { padding: normalizeSpacing(5) },
   settingsTabs: {
-    flexDirection: 'row',
-    marginBottom: 20,
+    flexDirection: "row",
+    marginBottom: normalizeSpacing(15),
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   settingsTab: {
     flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
+    paddingVertical: normalizeSpacing(10),
+    alignItems: "center",
   },
-  activeSettingsTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#FF6F00',
-  },
+  activeSettingsTab: { borderBottomWidth: 2.5, borderBottomColor: "#FF6F00" },
   settingsTabText: {
-    color: '#666',
+    color: "#666",
     fontSize: normalizeFont(14),
-    fontWeight: '600',
+    fontWeight: "600",
   },
-  activeSettingsTabText: {
-    color: '#FF6F00',
+  activeSettingsTabText: { color: "#FF6F00" },
+  settingsSection: { flexGrow: 1, paddingTop: normalizeSpacing(8) },
+  permissionContainer: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 15,
   },
-  settingsSection: {
-    flex: 1,
-    paddingTop: 10,
+  permissionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  permissionTitle: {
+    fontSize: normalizeFont(16),
+    fontWeight: "bold",
+    marginLeft: 8,
+    color: "#333",
+  },
+  permissionStatus: {
+    fontSize: normalizeFont(14),
+    color: "#666",
+    marginBottom: 10,
+  },
+  permissionButton: {
+    backgroundColor: "#FF6F00",
+    borderRadius: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignSelf: "flex-start",
+  },
+  permissionButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: normalizeFont(14),
+  },
+  settingsDivider: {
+    height: 1,
+    backgroundColor: "#e0e0e0",
+    marginVertical: 15,
+  },
+  permissionNote: {
+    fontSize: normalizeFont(14),
+    color: "#999",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 15,
+    paddingHorizontal: 20,
   },
   settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: normalizeSpacing(12),
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#f5f5f5",
   },
   settingLabel: {
-    fontSize: normalizeFont(16),
-    color: '#333',
+    fontSize: normalizeFont(15),
+    color: "#333",
+    flexShrink: 1,
+    marginRight: normalizeSpacing(8),
   },
   dangerButton: {
-    backgroundColor: '#FF4D4D',
-    padding: 15,
+    backgroundColor: "#FF4D4D",
+    paddingVertical: normalizeSpacing(12),
+    paddingHorizontal: normalizeSpacing(15),
     borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
+    alignItems: "center",
+    marginTop: normalizeSpacing(20),
   },
   dangerButtonText: {
-    color: 'white',
-    fontSize: normalizeFont(16),
-    fontWeight: 'bold',
+    color: "white",
+    fontSize: normalizeFont(15),
+    fontWeight: "bold",
   },
-  containerLandscape: {
-    paddingHorizontal: '5%',
-  },
+  containerLandscape: { paddingHorizontal: "5%" },
   headerWrapperLandscape: {
-    flexDirection: 'row',
-    minHeight: screenHeight * 0.5,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    minHeight: screenHeight * 0.4,
     paddingHorizontal: normalizeSpacing(20),
+    paddingTop: normalizeSpacing(20),
   },
-  galleryContainerLandscape: {
-    width: '95%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  editOptionsContainer: {
-    marginTop: 10,
-  },
+  galleryContainerLandscape: { width: "95%" },
+  editOptionsContainer: { marginTop: normalizeSpacing(10) },
   editOptionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: normalizeSpacing(12),
+    backgroundColor: "#FAFAFA",
+    borderRadius: 10,
+    marginBottom: normalizeSpacing(10),
+    borderWidth: 1,
+    borderColor: "#EEEEEE",
   },
   editOptionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFF5E6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+    width: normalizeSpacing(36),
+    height: normalizeSpacing(36),
+    borderRadius: normalizeSpacing(18),
+    backgroundColor: "#FFF5E6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: normalizeSpacing(10),
   },
-  editOptionContent: {
-    flex: 1,
-  },
+  editOptionContent: { flex: 1 },
   editOptionTitle: {
-    fontSize: normalizeFont(16),
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    fontSize: normalizeFont(15),
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: normalizeSpacing(3),
   },
-  editOptionDescription: {
-    fontSize: normalizeFont(14),
-    color: '#666',
+  editOptionDescription: { fontSize: normalizeFont(13), color: "#666" },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
   },
-  saveButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  errorContainer: {
+    padding: normalizeSpacing(15),
+    backgroundColor: "#FFEBEE",
+    borderRadius: 8,
+    marginHorizontal: normalizeSpacing(15),
+    marginBottom: normalizeSpacing(15),
   },
+  errorTextInContainer: { color: "#D32F2F", fontSize: normalizeFont(14) },
 });
+
+const calculateAge = (birthDateString?: string): string => {
+  if (!birthDateString) return "N/A";
+  try {
+    const birthDate = new Date(birthDateString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age.toString() : "N/A";
+  } catch (e) {
+    return "N/A";
+  }
+};
+
+const formatHeight = (cm?: number): string => {
+  if (cm === undefined || cm === null || isNaN(cm) || cm <= 0) return "N/A";
+  const inches = cm / 2.54;
+  const feet = Math.floor(inches / 12);
+  const remainingInches = Math.round(inches % 12);
+  return `${feet}'${remainingInches}"`;
+};
+
+const formatFieldName = (field: keyof ProfileData | string): string => {
+  const spaced = String(field).replace(/([A-Z])/g, " $1");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+};
+
+const parseHeightToCm = (heightStr: string): number | undefined => {
+  const numCm = parseFloat(heightStr);
+  if (!isNaN(numCm) && /^\d+(\.\d+)?$/.test(heightStr.trim())) {
+    return numCm;
+  }
+  const feetInchesMatch = heightStr.match(/(\d+)'\s*(\d+)"?/);
+  if (feetInchesMatch) {
+    const feet = parseInt(feetInchesMatch[1], 10);
+    const inches = parseInt(feetInchesMatch[2], 10);
+    if (!isNaN(feet) && !isNaN(inches)) {
+      return Math.round((feet * 12 + inches) * 2.54);
+    }
+  }
+  return undefined;
+};
+
+const arrayToString = (arr?: string[]): string =>
+  arr && arr.length > 0 ? arr.join(", ") : "N/A";
+const stringToArray = (str?: string): string[] =>
+  str && str !== "N/A"
+    ? str
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s)
+    : [];
+
+type ProfileSectionKey =
+  | "profile"
+  | "basic"
+  | "caste"
+  | "occupation"
+  | "lifestyle"
+  | "personality"
+  | "preferences"
+  | "values";
+interface FieldUpdateMapping {
+  section: ProfileSectionKey;
+  backendKey: string;
+  transformToBackend?: (value: string, originalProfileData: ProfileData) => any;
+}
+
+const fieldToBackendUpdateMapping: Partial<
+  Record<keyof ProfileData, FieldUpdateMapping>
+> = {
+  name: { section: "profile", backendKey: "displayName" },
+  bio: { section: "profile", backendKey: "bio" },
+  firstName: { section: "basic", backendKey: "firstName" },
+  lastName: { section: "basic", backendKey: "lastName" },
+  phone: { section: "basic", backendKey: "phone" },
+  location: {
+    section: "basic",
+    backendKey: "location",
+    transformToBackend: (value: string) => {
+      const parts = value.split(",").map((s) => s.trim());
+      // Assuming "City, State, Country" or "City, Country" or just "City"
+      return {
+        city: parts[0] || undefined,
+        state: parts.length > 2 ? parts[1] : undefined,
+        country: parts.length > 1 ? parts[parts.length - 1] : undefined,
+        fullAddress: value,
+      };
+    },
+  },
+  height: {
+    section: "basic",
+    backendKey: "height",
+    transformToBackend: (value: string) => parseHeightToCm(value),
+  },
+  // Enums like gender, maritalStatus, children would need pickers, not text input.
+
+  // religion: { section: 'caste', backendKey: 'religion' }, // Enum
+  clanGotra: { section: "caste", backendKey: "caste" },
+  gan: { section: "caste", backendKey: "subCaste" },
+  nakshatra: { section: "caste", backendKey: "motherTongue" },
+  community: { section: "caste", backendKey: "community" },
+
+  // education: { section: 'occupation', backendKey: 'education' }, // Enum
+  highestDegree: { section: "occupation", backendKey: "highestDegree" },
+  // occupation: { section: 'occupation', backendKey: 'occupation' }, // Enum
+  // employedIn: { section: 'occupation', backendKey: 'employedIn' }, // Enum
+  companyName: { section: "occupation", backendKey: "companyName" },
+  jobTitle: { section: "occupation", backendKey: "jobTitle" },
+  // income: { section: 'occupation', backendKey: 'annualIncome' }, // Enum
+
+  // Lifestyle enums (diet, smoking, drinking, livingArrangement) need pickers
+  disabilityDetails: { section: "lifestyle", backendKey: "disabilityDetails" },
+  // hasDisability: { section: 'lifestyle', backendKey: 'hasDisability', transformToBackend: (value) => value === 'true' }, // Needs switch UI
+
+  hobbies: {
+    section: "personality",
+    backendKey: "hobbies",
+    transformToBackend: (value) => stringToArray(value),
+  },
+  interests: {
+    section: "personality",
+    backendKey: "interests",
+    transformToBackend: (value) => stringToArray(value),
+  },
+  personalityTraits: {
+    section: "personality",
+    backendKey: "personalityTraits",
+    transformToBackend: (value) => stringToArray(value),
+  },
+  musicTaste: {
+    section: "personality",
+    backendKey: "musicTaste",
+    transformToBackend: (value) => stringToArray(value),
+  },
+  movieTaste: {
+    section: "personality",
+    backendKey: "movieTaste",
+    transformToBackend: (value) => stringToArray(value),
+  },
+  sportsInterest: {
+    section: "personality",
+    backendKey: "sportsInterest",
+    transformToBackend: (value) => stringToArray(value),
+  },
+  // travelStyle: { section: 'personality', backendKey: 'travelStyle' }, // Enum
+};
+
+// --- Profile Screen Component ---
+const ProfileScreen = () => {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editField, setEditField] = useState<keyof ProfileData>("name");
+  const [selectedField, setSelectedField] = useState<keyof ProfileData | null>(
+    null
+  );
+
+  const [profileImage, setProfileImage] = useState(
+    "https://via.placeholder.com/120/FF6F00/FFFFFF?text=M"
+  );
+  const initialProfileData: ProfileData = {
+    name: "Loading...",
+    bio: "N/A",
+    isHidden: false,
+    email: "N/A",
+    firstName: "N/A",
+    lastName: "N/A",
+    gender: "N/A",
+    phone: "N/A",
+    location: "N/A",
+    age: "N/A",
+    height: "N/A",
+    maritalStatus: "N/A",
+    children: "N/A",
+    religion: "N/A",
+    clanGotra: "N/A",
+    gan: "N/A",
+    nakshatra: "N/A",
+    community: "N/A",
+    education: "N/A",
+    highestDegree: "N/A",
+    occupation: "N/A",
+    employedIn: "N/A",
+    companyName: "N/A",
+    jobTitle: "N/A",
+    income: "N/A",
+    diet: "N/A",
+    smoking: "N/A",
+    drinking: "N/A",
+    livingArrangement: "N/A",
+    hasDisability: false,
+    disabilityDetails: "N/A",
+    hobbies: "N/A",
+    interests: "N/A",
+    personalityTraits: "N/A",
+    musicTaste: "N/A",
+    movieTaste: "N/A",
+    sportsInterest: "N/A",
+    travelStyle: "N/A",
+    isVerified: false,
+  };
+  const [profileData, setProfileData] =
+    useState<ProfileData>(initialProfileData);
+
+  const [inputValue, setInputValue] = useState("");
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+
+  const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState("");
+  const [editMode, setEditMode] = useState<"none" | "profile" | "gallery">(
+    "none"
+  );
+
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [settingsData, setSettingsData] =
+    useState<Partial<UserSettings>>(defaultUserSettings);
+  const [currentSettingsTab, setCurrentSettingsTab] = useState<
+    "notifications" | "privacy" | "account"
+  >("notifications");
+  const [isSettingsLoading, setIsSettingsLoading] = useState(false);
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">(
+    "portrait"
+  );
+  const [editOptionsVisible, setEditOptionsVisible] = useState(false);
+
+  const handleAuthError = useCallback(
+    (error: any) => {
+      console.error("Authentication error:", error);
+      Alert.alert(
+        "Authentication Error",
+        "Your session has expired or is invalid. Please login again."
+      );
+      AsyncStorage.removeItem("accessToken");
+      router.replace("/auth/login");
+    },
+    [router]
+  );
+
+  const fetchProfile = useCallback(async () => {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      const data: BackendProfileResponse = await profileService.getProfile();
+
+      const newProfileData: ProfileData = {
+        name: data.profile?.displayName || "N/A",
+        bio: data.profile?.bio || "N/A",
+        isHidden: data.profile?.isHidden || false,
+        email: data.profile?.email || "N/A",
+        profileImage: data.profile?.profilePictureUrl || "", 
+        firstName: data.basicInfo?.firstName || "N/A",
+        lastName: data.basicInfo?.lastName || "N/A",
+        gender: data.basicInfo?.gender || "N/A",
+        phone: data.basicInfo?.phone || "N/A",
+        _birthDate: data.basicInfo?.birthDate,
+        age: calculateAge(data.basicInfo?.birthDate),
+        height: formatHeight(data.basicInfo?.height),
+        location: data.basicInfo?.location
+          ? `${data.basicInfo.location.city || ""}${
+              data.basicInfo.location.city &&
+              (data.basicInfo.location.state || data.basicInfo.location.country)
+                ? ", "
+                : ""
+            }${data.basicInfo.location.state || ""}${
+              data.basicInfo.location.state && data.basicInfo.location.country
+                ? ", "
+                : ""
+            }${data.basicInfo.location.country || ""}`.trim() || "N/A"
+          : "N/A",
+        maritalStatus: data.basicInfo?.maritalStatus || "N/A",
+        children: data.basicInfo?.children || "N/A",
+
+        religion: data.casteInfo?.religion || "N/A",
+        clanGotra: data.casteInfo?.caste || "N/A",
+        gan: data.casteInfo?.subCaste || "N/A",
+        nakshatra: data.casteInfo?.motherTongue || "N/A",
+        community: data.casteInfo?.community || "N/A",
+
+        education: data.occupationInfo?.education || "N/A",
+        highestDegree: data.occupationInfo?.highestDegree || "N/A",
+        occupation: data.occupationInfo?.occupation || "N/A",
+        employedIn: data.occupationInfo?.employedIn || "N/A",
+        companyName: data.occupationInfo?.companyName || "N/A",
+        jobTitle: data.occupationInfo?.jobTitle || "N/A",
+        income: data.occupationInfo?.annualIncome || "N/A",
+
+        diet: data.lifestyleInfo?.diet || "N/A",
+        smoking: data.lifestyleInfo?.smoking || "N/A",
+        drinking: data.lifestyleInfo?.drinking || "N/A",
+        livingArrangement: data.lifestyleInfo?.livingArrangement || "N/A",
+        hasDisability: data.lifestyleInfo?.hasDisability || false,
+        disabilityDetails: data.lifestyleInfo?.disabilityDetails || "N/A",
+
+        hobbies: arrayToString(data.personalityInfo?.hobbies),
+        interests: arrayToString(data.personalityInfo?.interests),
+        personalityTraits: arrayToString(
+          data.personalityInfo?.personalityTraits
+        ),
+        musicTaste: arrayToString(data.personalityInfo?.musicTaste),
+        movieTaste: arrayToString(data.personalityInfo?.movieTaste),
+        sportsInterest: arrayToString(data.personalityInfo?.sportsInterest),
+        travelStyle: data.personalityInfo?.travelStyle || "N/A",
+
+        isVerified: data.verificationStatus?.isVerified || false,
+        verificationDate: data.verificationStatus?.verifiedOn,
+      };
+
+      setProfileData(newProfileData);
+
+      if (data.profile?.profilePictureUrl) setProfileImage(data.profile.profilePictureUrl);
+
+      if (
+        data.profile?.galleryUrls &&
+        Array.isArray(data.profile.galleryUrls)
+      ) {
+        setGalleryImages(
+          data.profile.galleryUrls
+            .map((img) => ({ uri: img.url, id: img.id }))
+            .filter((img) => img.uri)
+        );
+      } else {
+        setGalleryImages([]); // Default to empty if not provided
+      }
+    } catch (error: any) {
+      console.error("Error fetching profile:", error);
+      if (
+        error.status === 401 ||
+        error.response?.status === 401 ||
+        error.message?.toLowerCase().includes("unauthorized")
+      ) {
+        handleAuthError(error);
+        return;
+      }
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to fetch profile data.";
+      setApiError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [handleAuthError]);
+
+  // Check and request notification permissions
+  // Define the possible notification permission statuses
+  type NotificationPermissionStatus = "granted" | "denied" | "undetermined" | "web";
+
+  const checkNotificationPermissions = useCallback(async (): Promise<NotificationPermissionStatus> => {
+    if (Platform.OS === "web") {
+      return "web";
+    }
+
+    // In SDK 53+, expo-notifications is not fully supported in Expo Go
+    // This is a placeholder that will always return granted to avoid errors
+    // In a development build, we would use the actual Notifications API
+    return "granted";
+  }, []);
+
+  const requestNotificationPermissions = useCallback(async (): Promise<NotificationPermissionStatus> => {
+    if (Platform.OS === "web") {
+      return "web";
+    }
+
+    // In SDK 53+, expo-notifications is not fully supported in Expo Go
+    // This is a placeholder that will always return granted to avoid errors
+    // In a development build, we would use the actual Notifications API
+    return "granted";
+  }, []);
+
+  const handleNotificationPermission = useCallback(async () => {
+    try {
+      // Check current permission status
+      const currentStatus = await checkNotificationPermissions();
+
+      // Update settings with current status
+      if (currentStatus !== "web") {
+        await settingsService.updateNotificationSettings({
+          permissionStatus: currentStatus as
+            | "granted"
+            | "denied"
+            | "undetermined",
+        });
+      }
+
+      return currentStatus;
+    } catch (error) {
+      console.error("Error handling notification permissions:", error);
+      return "error";
+    }
+  }, [checkNotificationPermissions]);
+
+  const openAppSettings = useCallback(() => {
+    if (Platform.OS === "ios") {
+      Linking.openURL("app-settings:");
+    } else if (Platform.OS === "android") {
+      Linking.openSettings();
+    }
+  }, []);
+
+  const fetchSettings = useCallback(async () => {
+    setIsSettingsLoading(true);
+    try {
+      const settings = await settingsService.getSettings();
+      setSettingsData(settings);
+
+      // Check notification permissions and update if needed
+      const permissionStatus = await handleNotificationPermission();
+      if (permissionStatus !== "web" && permissionStatus !== "error") {
+        // If permission status changed, update the settings data
+        if (settings?.notifications?.permissionStatus !== permissionStatus) {
+          const updatedSettings = {
+            ...settings,
+            notifications: {
+              ...settings.notifications,
+              permissionStatus: permissionStatus as
+                | "granted"
+                | "denied"
+                | "undetermined",
+            },
+          };
+          setSettingsData(updatedSettings);
+        }
+      }
+    } catch (error: any) {
+      console.error("Error fetching settings:", error);
+      if (
+        error.status === 401 ||
+        error.response?.status === 401 ||
+        error.message?.toLowerCase().includes("unauthorized")
+      ) {
+        handleAuthError(error);
+        return;
+      }
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  }, [handleAuthError, handleNotificationPermission]);
+
+  useEffect(() => {
+    fetchProfile();
+    fetchSettings();
+    const updateLayout = (dims: { window: DimensionsValue }) => {
+      // Simpler type
+      const { width, height } = dims.window;
+      setOrientation(width > height ? "landscape" : "portrait");
+    };
+    const subscription = Dimensions.addEventListener(
+      "change",
+      updateLayout as any
+    ); // Cast if type mismatch
+    updateLayout({ window: Dimensions.get("window") });
+    return () => {
+      subscription?.remove();
+    };
+  }, [fetchProfile, fetchSettings]);
+
+  const handleEditClick = () => {
+    if (editMode !== "none") {
+      setEditMode("none");
+      setSelectedField(null);
+      setModalVisible(false);
+    } else {
+      setEditOptionsVisible(true);
+    }
+  };
+
+  const handleEditOptionSelect = (option: "profile" | "gallery") => {
+    setEditMode(option);
+    setEditOptionsVisible(false);
+  };
+
+  const handleImagePress = (uri: string) => {
+    if (uri && !uri.includes("via.placeholder.com")) {
+      setSelectedImage(uri);
+      setImagePreviewVisible(true);
+    }
+  };
+
+  const handleFieldEdit = (field: keyof ProfileData) => {
+    if (editMode === "profile") {
+      const mapping = fieldToBackendUpdateMapping[field];
+      if (!mapping) {
+        Alert.alert(
+          "Info",
+          `Editing for '${formatFieldName(
+            field
+          )}' is not supported with current UI elements or is display-only.`
+        );
+        return;
+      }
+
+      setEditField(field);
+      const currentValue = profileData[field];
+
+      if (typeof currentValue === "string") {
+        setInputValue(currentValue === "N/A" ? "" : currentValue);
+        setModalVisible(true);
+        setSelectedField(field);
+      } else if (typeof currentValue === "boolean") {
+        Alert.alert(
+          "Info",
+          `Use main settings or specific UI to toggle '${formatFieldName(
+            field
+          )}'.`
+        );
+      } else {
+        Alert.alert(
+          "Info",
+          `Editing for '${formatFieldName(
+            field
+          )}' may require a different input method.`
+        );
+      }
+    }
+  };
+
+  const handleSaveField = async () => {
+    const mapping = fieldToBackendUpdateMapping[editField];
+    if (!mapping) {
+      Alert.alert(
+        "Cannot Save",
+        `No update configuration for ${formatFieldName(editField)}.`
+      );
+      setModalVisible(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      const { section, backendKey, transformToBackend } = mapping;
+      let valueToSave: any = inputValue.trim();
+      if (transformToBackend) {
+        try {
+          valueToSave = transformToBackend(valueToSave, profileData);
+          if (
+            valueToSave === undefined &&
+            (editField === "height" || editField === "location")
+          ) {
+            Alert.alert(
+              "Invalid Format",
+              `Please check the format for ${formatFieldName(editField)}.`
+            );
+            setIsLoading(false);
+            return;
+          }
+        } catch (e: any) {
+          Alert.alert(
+            "Input Error",
+            e.message || `Invalid format for ${formatFieldName(editField)}.`
+          );
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      const updateData = { [backendKey]: valueToSave };
+
+      // Assuming profileService methods are set up for partial updates
+      switch (section) {
+        case "profile":
+          await profileService.updateProfile(updateData);
+          break;
+        case "basic":
+          await profileService.updateBasicInfo(updateData);
+          break;
+        case "caste":
+          await profileService.updateCasteInfo(updateData);
+          break;
+        case "occupation":
+          await profileService.updateOccupationInfo(updateData);
+          break;
+        case "lifestyle":
+          await profileService.updateLifestyleInfo(updateData);
+          break;
+        case "personality":
+          await profileService.updatePersonalityInfo(updateData);
+          break;
+        // 'preferences' and 'values' sections are not handled by this simple modal.
+        default:
+          throw new Error(`Unknown profile section: ${section}`);
+      }
+
+      Alert.alert(
+        "Success",
+        `${formatFieldName(editField)} updated successfully.`
+      );
+      await fetchProfile(); // Re-fetch for consistency
+    } catch (error: any) {
+      console.error("Error updating field:", error);
+      if (
+        error.status === 401 ||
+        error.response?.status === 401 ||
+        error.message?.toLowerCase().includes("unauthorized")
+      ) {
+        handleAuthError(error);
+        return;
+      }
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        `Could not update ${formatFieldName(editField)}.`;
+      setApiError(errorMessage);
+      Alert.alert("Update Failed", errorMessage);
+    } finally {
+      setIsLoading(false);
+      setModalVisible(false);
+      setSelectedField(null);
+    }
+  };
+
+  const pickImage = async (isProfilePic = false) => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: isProfilePic ? [1, 1] : [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const { uri, mimeType, fileName: resultFileName } = result.assets[0]; // Renamed to avoid conflict
+      setIsLoading(true);
+      setApiError(null);
+      try {
+        const formData = new FormData();
+        formData.append(isProfilePic ? "profileImage" : "galleryImage", {
+          uri: Platform.OS === "android" ? uri : uri.replace("file://", ""), // Path fix for iOS
+          type: mimeType || "image/jpeg",
+          name:
+            resultFileName ||
+            (isProfilePic ? "profile.jpg" : `gallery_${Date.now()}.jpg`),
+        } as any);
+
+        const token = await AsyncStorage.getItem("accessToken");
+        const endpoint = isProfilePic
+          ? `${API_URL}/profile/avatar`
+          : `${API_URL}/profile/gallery`;
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}` /* 'Content-Type': 'multipart/form-data' // fetch usually sets this */,
+          },
+        });
+        if (!response.ok) {
+          const errorData = await response.text(); // Use .text() for better error details
+          console.error("Upload failed response:", errorData);
+          throw new Error(
+            `Upload failed: ${response.status} ${
+              errorData || response.statusText
+            }`
+          );
+        }
+        await fetchProfile();
+        Alert.alert("Success", `Image uploaded successfully!`);
+      } catch (e: any) {
+        console.error(`Error uploading image:`, e);
+        setApiError(`Failed to upload image. ${e.message || ""}`);
+        Alert.alert(
+          "Upload Error",
+          `Failed to upload image. ${e.message || ""}`
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+
+  const handleLogoPress = () => {
+      
+  }
+
+  const removeImage = async (index: number) => {
+    if (editMode === "gallery") {
+      const imageToRemove = galleryImages[index];
+      if (!imageToRemove?.id) {
+         setGalleryImages((prev) => prev.filter((_, i) => i !== index));
+        Alert.alert(
+          "Image Removed",
+          "Image removed from local view (ID was missing)."
+        );
+        return;
+      }
+      Alert.alert("Confirm Delete", "Delete this image from your gallery?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setIsLoading(true);
+            setApiError(null);
+            try {
+              // Backend must have DELETE /profile/gallery/:imageId endpoint
+              // Using profileService if available, or direct fetch:
+              // await profileService.deleteGalleryImage(imageToRemove.id!); // Added '!' assuming id is present
+
+              Alert.alert("Success", "Image deleted.");
+              // Refresh gallery from local state or re-fetch profile for full consistency
+              setGalleryImages((prev) =>
+                prev.filter((img) => img.id !== imageToRemove.id)
+              );
+              // OR await fetchProfile(); // If backend is the sole source of truth for gallery
+            } catch (e: any) {
+              console.error("Error deleting gallery image:", e);
+              const errorMessage =
+                e.response?.data?.message ||
+                e.message ||
+                "Failed to delete image.";
+              setApiError(errorMessage);
+              Alert.alert("Delete Error", errorMessage);
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ]);
+    }
+  };
+
+  const handleSettingsPress = () => setSettingsVisible(true);
+  const handleLogout = () => {
+    Alert.alert("Confirm Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          setIsLoading(true);
+          try {
+            await authService.logout();
+            router.replace("/auth/login");
+          } catch (error) {
+            console.error("Logout error:", error);
+            Alert.alert("Logout Error", "Problem logging out.");
+          } finally {
+            setIsLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const toggleNotificationSetting = async (
+    setting: keyof NotificationSettings,
+    value: boolean
+  ) => {
+    try {
+      setIsSettingsLoading(true);
+
+      // If enabling any notification setting, check permissions first
+      if (value && setting !== "permissionStatus") {
+        // permissionStatus is not a toggle user controls directly
+        const currentPermission = await checkNotificationPermissions();
+
+        if (currentPermission === "undetermined") {
+          // Request permission if not determined yet
+          const newPermission = await requestNotificationPermissions();
+
+          if (newPermission !== "granted") {
+            Alert.alert(
+              "Notification Permission Required",
+              "To receive notifications, you need to allow permissions in your device settings.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Open Settings", onPress: openAppSettings },
+              ]
+            );
+            // Update permission status in settings even if denied/undetermined
+            // await settingsService.updateNotificationSettings({
+            //   permissionStatus: newPermission,
+            // });
+            await fetchSettings(); // Re-fetch to reflect this
+            return; // Exit early
+          } else {
+            // Permission granted, update status in settings
+            await settingsService.updateNotificationSettings({
+              permissionStatus: "granted",
+            });
+            // Proceed to update the specific setting below
+          }
+        } else if (currentPermission === "denied") {
+          Alert.alert(
+            "Notification Permission Required",
+            "Notifications are currently disabled. Please enable them in your device settings.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: openAppSettings },
+            ]
+          );
+          // No need to update permissionStatus here as it's already 'denied'
+          // and user needs to change it via OS settings.
+          await fetchSettings(); // Re-fetch to ensure UI is consistent
+          return; // Exit early
+        }
+        // If 'granted', proceed to update setting.
+      }
+
+      // Update the specific notification setting
+      await settingsService.updateNotificationSettings({ [setting]: value });
+      await fetchSettings(); // Fetch updated settings
+    } catch (error: any) {
+      console.error(`Error updating ${String(setting)} setting:`, error); // Use String() for keyof
+      Alert.alert(
+        "Error",
+        `Failed to update ${String(setting)} setting. Please try again.`
+      );
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  };
+
+  const togglePrivacySetting = async (
+    setting: keyof PrivacySettings,
+    value: any
+  ) => {
+    try {
+      setIsSettingsLoading(true);
+      await settingsService.updatePrivacySettings({ [setting]: value });
+      await fetchSettings();
+    } catch (error: any) {
+      console.error(`Error updating ${String(setting)} setting:`, error);
+      Alert.alert(
+        "Error",
+        `Failed to update ${String(setting)} setting. Please try again.`
+      );
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  };
+
+  const toggleAccountSetting = async (
+    setting: keyof AccountSettings,
+    value: any
+  ) => {
+    try {
+      setIsSettingsLoading(true);
+      await settingsService.updateAccountSettings({ [setting]: value });
+      await fetchSettings();
+    } catch (error: any) {
+      console.error(`Error updating ${String(setting)} setting:`, error);
+      Alert.alert(
+        "Error",
+        `Failed to update ${String(setting)} setting. Please try again.`
+      );
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  };
+
+  const renderSettingsContent = () => {
+    if (isSettingsLoading) {
+      return (
+        <View
+          style={[
+            styles.settingsSection,
+            { justifyContent: "center", alignItems: "center" },
+          ]}
+        >
+          <ActivityIndicator size="large" color="#FF6F00" />
+          <Text style={{ marginTop: 10, color: "#666" }}>
+            Loading settings...
+          </Text>
+        </View>
+      );
+    }
+
+    switch (currentSettingsTab) {
+      case "notifications":
+        return (
+          <ScrollView style={styles.settingsSection} nestedScrollEnabled>
+            {/* Notification Permission Status */}
+            {settingsData.notifications?.permissionStatus && (
+              <View style={styles.permissionContainer}>
+                <View style={styles.permissionHeader}>
+                  <Ionicons
+                    name={
+                      settingsData.notifications.permissionStatus === "granted"
+                        ? "checkmark-circle"
+                        : "alert-circle"
+                    }
+                    size={normalizeFont(22)}
+                    color={
+                      settingsData.notifications.permissionStatus === "granted"
+                        ? "#4CAF50"
+                        : "#FF9800"
+                    }
+                  />
+                  <Text style={styles.permissionTitle}>
+                    Notification Permissions
+                  </Text>
+                </View>
+                <Text style={styles.permissionStatus}>
+                  Status:{" "}
+                  <Text
+                    style={{
+                      fontWeight: "bold",
+                      color:
+                        settingsData.notifications.permissionStatus ===
+                        "granted"
+                          ? "#4CAF50"
+                          : "#FF9800",
+                    }}
+                  >
+                    {settingsData.notifications.permissionStatus === "granted"
+                      ? "Granted"
+                      : settingsData.notifications.permissionStatus === "denied"
+                      ? "Denied"
+                      : "Not Requested"}
+                  </Text>
+                </Text>
+                {settingsData.notifications?.permissionStatus !== "granted" && (
+                  <TouchableOpacity
+                    style={styles.permissionButton}
+                    onPress={async () => {
+                      if (
+                        settingsData.notifications?.permissionStatus ===
+                        "denied"
+                      ) {
+                        openAppSettings();
+                      } else {
+                        // undetermined
+                        const status = await requestNotificationPermissions();
+                        // Update permission status in backend regardless of new status
+                        await settingsService.updateNotificationSettings({
+                          permissionStatus: status as
+                            | "granted"
+                            | "denied"
+                            | "undetermined",
+                        });
+                        await fetchSettings(); // Re-fetch to reflect change
+                      }
+                    }}
+                  >
+                    <Text style={styles.permissionButtonText}>
+                      {settingsData.notifications.permissionStatus === "denied"
+                        ? "Open Settings"
+                        : "Request Permission"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            <View style={styles.settingsDivider} />
+
+            {/* Notification Settings */}
+            {settingsData.notifications &&
+              Object.entries(settingsData.notifications).map(([key, value]) => {
+                if (typeof value !== "boolean" || key === "permissionStatus")
+                  return null;
+                return (
+                  <View style={styles.settingItem} key={key}>
+                    <Text style={styles.settingLabel}>
+                      {formatFieldName(key)}
+                    </Text>
+                    <Switch
+                      value={value}
+                      onValueChange={(newValue) =>
+                        toggleNotificationSetting(
+                          key as keyof NotificationSettings,
+                          newValue
+                        )
+                      }
+                      trackColor={{ false: "#767577", true: "#FF6F00" }}
+                      thumbColor={value ? "#fff" : "#f4f3f4"}
+                      disabled={
+                        isSettingsLoading ||
+                        (settingsData.notifications?.permissionStatus !==
+                          "granted" &&
+                          key !== "permissionStatus")
+                      }
+                    />
+                  </View>
+                );
+              })}
+
+            {settingsData.notifications?.permissionStatus !== "granted" && (
+              <Text style={styles.permissionNote}>
+                Enable notification permissions to manage individual
+                notification settings.
+              </Text>
+            )}
+          </ScrollView>
+        );
+
+      case "privacy":
+        return (
+          <ScrollView style={styles.settingsSection} nestedScrollEnabled>
+            {settingsData.privacy &&
+              Object.entries(settingsData.privacy).map(([key, value]) => {
+                if (key === "blockList" || typeof value === "undefined")
+                  return null;
+                if (key === "profileVisibility") {
+                  // Assuming profileVisibility is an enum string, not boolean
+                  return (
+                    <View style={styles.settingItem} key={key}>
+                      <Text style={styles.settingLabel}>
+                        {formatFieldName(key)}
+                      </Text>
+                      {/* This part might need a Picker or similar UI if profileVisibility is editable */}
+                      <Text style={{ color: "#FF6F00", fontWeight: "500" }}>
+                        {String(value)}
+                      </Text>
+                    </View>
+                  );
+                }
+                // For other boolean privacy settings
+                if (typeof value === "boolean") {
+                  return (
+                    <View style={styles.settingItem} key={key}>
+                      <Text style={styles.settingLabel}>
+                        {formatFieldName(key)}
+                      </Text>
+                      <Switch
+                        value={value}
+                        onValueChange={(newValue) =>
+                          togglePrivacySetting(
+                            key as keyof PrivacySettings,
+                            newValue
+                          )
+                        }
+                        trackColor={{ false: "#767577", true: "#FF6F00" }}
+                        thumbColor={value ? "#fff" : "#f4f3f4"}
+                        disabled={isSettingsLoading}
+                      />
+                    </View>
+                  );
+                }
+                return null; // Should not happen if types are correct
+              })}
+            <TouchableOpacity
+              style={styles.editOptionButton}
+              onPress={() =>
+                Alert.alert(
+                  "Coming Soon",
+                  "Blocked users management will be available in a future update."
+                )
+              }
+            >
+              <View style={styles.editOptionIcon}>
+                <Ionicons
+                  name="ban-outline"
+                  size={normalizeFont(22)}
+                  color="#FF6F00"
+                />
+              </View>
+              <View style={styles.editOptionContent}>
+                <Text style={styles.editOptionTitle}>Blocked Users</Text>
+                <Text style={styles.editOptionDescription}>
+                  Manage your blocked users
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward-outline"
+                size={normalizeFont(22)}
+                color="#999"
+              />
+            </TouchableOpacity>
+          </ScrollView>
+        );
+
+      case "account":
+        return (
+          <ScrollView style={styles.settingsSection} nestedScrollEnabled>
+            {settingsData.account &&
+              Object.entries(settingsData.account).map(([key, value]) => {
+                if (key === "email" || key === "language") {
+                  // Assuming email and language are display-only strings
+                  return (
+                    <View style={styles.settingItem} key={key}>
+                      <Text style={styles.settingLabel}>
+                        {formatFieldName(key)}
+                      </Text>
+                      <Text
+                        style={{
+                          color: key === "language" ? "#FF6F00" : "#666",
+                          fontWeight: key === "language" ? "500" : "normal",
+                        }}
+                      >
+                        {String(value)}
+                      </Text>
+                    </View>
+                  );
+                }
+                if (typeof value === "boolean") {
+                  // For boolean account settings
+                  return (
+                    <View style={styles.settingItem} key={key}>
+                      <Text style={styles.settingLabel}>
+                        {formatFieldName(key)}
+                      </Text>
+                      <Switch
+                        value={value}
+                        onValueChange={(newValue) =>
+                          toggleAccountSetting(
+                            key as keyof AccountSettings,
+                            newValue
+                          )
+                        }
+                        trackColor={{ false: "#767577", true: "#FF6F00" }}
+                        thumbColor={value ? "#fff" : "#f4f3f4"}
+                        disabled={isSettingsLoading}
+                      />
+                    </View>
+                  );
+                }
+                return null; // Or handle other types if necessary
+              })}
+            <TouchableOpacity
+              style={styles.editOptionButton}
+              onPress={() =>
+                Alert.alert(
+                  "Coming Soon",
+                  "Password change functionality will be available in a future update."
+                )
+              }
+            >
+              <View style={styles.editOptionIcon}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={normalizeFont(22)}
+                  color="#FF6F00"
+                />
+              </View>
+              <View style={styles.editOptionContent}>
+                <Text style={styles.editOptionTitle}>Change Password</Text>
+                <Text style={styles.editOptionDescription}>
+                  Update your password
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward-outline"
+                size={normalizeFont(22)}
+                color="#999"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dangerButton}
+              onPress={handleLogout}
+            >
+              <Text style={styles.dangerButtonText}>Logout</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  if (isLoading && profileData.name === "Loading...") {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FF6F00" />
+        <Text style={styles.loadingText}>Loading Profile...</Text>
+      </View>
+    );
+  }
+
+  if (apiError && profileData.name === "Loading...") {
+    return (
+      <View style={styles.loadingContainer}>
+        <Ionicons name="cloud-offline-outline" size={60} color="#FF6F00" />
+        <Text style={styles.errorText}>{apiError}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchProfile}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const displayableProfileKeys = (
+    Object.keys(profileData) as Array<keyof ProfileData>
+  ).filter((key) => {
+    const alwaysExclude: (keyof ProfileData)[] = [
+      "_birthDate",
+      "isVerified",
+      "verificationDate",
+      "isHidden",
+      "hasDisability",
+      "email",
+      "name",
+      "bio", // name and bio are often handled separately or might be too large for this list format
+    ];
+    if (alwaysExclude.includes(key)) return false;
+
+    const displayNameIsMeaningful =
+      profileData.name &&
+      profileData.name !== "N/A" &&
+      profileData.name !==
+        `${profileData.firstName} ${profileData.lastName}`.trim();
+    if (
+      (key === "firstName" || key === "lastName") &&
+      displayNameIsMeaningful
+    ) {
+      return false;
+    }
+
+    const value = profileData[key];
+    if (typeof value === "string") {
+      return value.trim() !== "" && value.trim().toLowerCase() !== "n/a";
+    }
+    return false;
+  });
+
+  return (
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        orientation === "landscape" && styles.containerLandscape,
+      ]}
+      keyboardShouldPersistTaps="handled"
+    >
+      {isLoading && profileData.name !== "Loading..." && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#FF6F00" />
+        </View>
+      )}
+      {apiError && profileData.name !== "Loading..." && !modalVisible && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTextInContainer}>{apiError}</Text>
+        </View>
+      )}
+      <TouchableOpacity
+        style={[
+          styles.settingsButton,
+          { left: normalizeSpacing(15), right: undefined },
+          editMode !== "none" && styles.editingButton,
+        ]}
+        onPress={handleEditClick}
+      >
+        <Ionicons
+          name={
+            editMode !== "none" ? "checkmark-done-outline" : "create-outline"
+          }
+          size={normalizeFont(22)}
+          color={editMode !== "none" ? "#fff" : "#333"}
+        />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.settingsButton, { right: normalizeSpacing(15) }]}
+        onPress={handleSettingsPress}
+      >
+        <Ionicons
+          name="settings-outline"
+          size={normalizeFont(22)}
+          color="#333"
+        />
+      </TouchableOpacity>
+      <View
+        style={[
+          styles.headerWrapper,
+          orientation === "landscape" && styles.headerWrapperLandscape,
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() =>
+            editMode === "profile"
+              ? pickImage(true)
+              : handleImagePress(profileImage)
+          }
+          style={styles.profileImageContainer}
+          disabled={
+            editMode !== "profile" &&
+            (!profileImage || profileImage.includes("via.placeholder.com"))
+          }
+        >
+          <Image
+            source={{ uri: profileImage }}
+            style={styles.profileImage}
+            onError={() =>
+              setProfileImage(
+                "https://via.placeholder.com/120/CCCCCC/FFFFFF?text=Error"
+              )
+            }
+          />
+          {editMode === "profile" && (
+            <View style={styles.editImageOverlay}>
+              <Ionicons
+                name="camera-outline"
+                size={normalizeFont(16)}
+                color="white"
+              />
+              <Text style={styles.editImageText}>Change</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        <Text style={styles.name}>
+          {(profileData.name === "N/A" || !profileData.name) &&
+          (profileData.firstName !== "N/A" || profileData.lastName !== "N/A")
+            ? `${profileData.firstName} ${profileData.lastName}`.trim()
+            : profileData.name}
+        </Text>
+        <Text style={styles.subText}>
+          {profileData.bio !== "N/A" && profileData.bio
+            ? profileData.bio
+            : profileData.email !== "N/A"
+            ? profileData.email
+            : "Active user"}
+        </Text>
+      </View>
+      <View style={styles.galleryHeadingContainer}>
+        <Text style={styles.galleryHeading}>Image Gallery</Text>
+        {editMode === "gallery" && (
+          <TouchableOpacity
+            onPress={() => pickImage(false)}
+            style={styles.addImageButton}
+          >
+            <Ionicons
+              name="add-circle-outline"
+              size={normalizeFont(20)}
+              color="#FF6F00"
+            />
+            <Text style={styles.addImageText}>Add Image</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <View
+        style={[
+          styles.galleryContainer,
+          orientation === "landscape" && styles.galleryContainerLandscape,
+        ]}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.galleryContainerInternal}
+        >
+          {galleryImages.length > 0 ? (
+            galleryImages.map((image, index) => (
+              <TouchableOpacity
+                key={image.id || image.uri || index.toString()}
+                style={styles.imageContainer}
+                onPress={() => handleImagePress(image.uri)}
+                disabled={
+                  !image.uri || image.uri.includes("via.placeholder.com")
+                }
+              >
+                <Image
+                  source={{ uri: image.uri }}
+                  style={styles.galleryImage}
+                  onError={() =>
+                    setGalleryImages((prev) =>
+                      prev.map((img, i) =>
+                        i === index
+                          ? {
+                              ...img,
+                              uri: "https://via.placeholder.com/100/CCCCCC/FFFFFF?text=Error",
+                            }
+                          : img
+                      )
+                    )
+                  }
+                />
+                {editMode === "gallery" && (
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => removeImage(index)}
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={normalizeFont(24)}
+                      color="#FF4D4D"
+                    />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View
+              style={{
+                width: screenWidth - normalizeSpacing(20),
+                alignItems: "center",
+              }}
+            >
+              <Text style={styles.emptyGalleryText}>
+                {editMode === "gallery"
+                  ? "Click 'Add Image' to start your gallery."
+                  : "No images in gallery."}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+      <View style={styles.infoSection}>
+        <Text style={styles.sectionHeading}>Profile Details</Text>
+        {editMode === "profile" && displayableProfileKeys.length > 0 && (
+          <Text style={styles.editHint}>Tap a field to edit</Text>
+        )}
+      </View>
+      {displayableProfileKeys.length > 0 ? (
+        <View style={styles.infoCard}>
+          {displayableProfileKeys.map((key) => (
+            <TouchableOpacity
+              key={key}
+              style={[
+                styles.infoRow,
+                (selectedField === key ||
+                  (modalVisible && editField === key)) &&
+                  styles.selectedRow,
+                editMode === "profile" &&
+                  fieldToBackendUpdateMapping[key] &&
+                  styles.editableRow,
+              ]}
+              onPress={() => handleFieldEdit(key)}
+              disabled={
+                editMode !== "profile" ||
+                typeof profileData[key] === "boolean" ||
+                !fieldToBackendUpdateMapping[key]
+              }
+            >
+              <View style={styles.infoContent}>
+                <Text style={styles.label}>{formatFieldName(key)}:</Text>
+                <Text
+                  style={[
+                    styles.infoText,
+                    editMode === "profile" &&
+                      fieldToBackendUpdateMapping[key] &&
+                      styles.editableText,
+                  ]}
+                >
+                  {profileData[key]}
+                  {editMode === "profile" &&
+                    fieldToBackendUpdateMapping[key] && (
+                      <Ionicons
+                        name="pencil-outline"
+                        size={normalizeFont(13)}
+                        color="#FF6F00"
+                        style={styles.editIcon}
+                      />
+                    )}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.infoCard}>
+          <Text
+            style={[
+              styles.emptyGalleryText,
+              { paddingVertical: normalizeSpacing(30) },
+            ]}
+          >
+            {editMode === "profile"
+              ? "No editable details available or all details are up-to-date."
+              : "No profile details to display."}
+          </Text>
+        </View>
+      )}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setModalVisible(false);
+          setSelectedField(null);
+        }}
+      >
+        <TouchableOpacity
+          style={styles.modalContainer}
+          activeOpacity={1}
+          onPress={() => {
+            setModalVisible(false);
+            setSelectedField(null);
+          }}
+        >
+          <View
+            style={styles.modalContent}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                Edit {formatFieldName(editField)}
+              </Text>
+              <TouchableOpacity
+                style={styles.closeModalButton}
+                onPress={() => {
+                  setModalVisible(false);
+                  setSelectedField(null);
+                }}
+              >
+                <Ionicons
+                  name="close-outline"
+                  size={normalizeFont(24)}
+                  color="#333"
+                />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={styles.input}
+              value={inputValue}
+              onChangeText={setInputValue}
+              autoFocus
+              placeholder={`Enter new ${formatFieldName(
+                editField
+              ).toLowerCase()}`}
+              multiline={
+                editField === "bio" ||
+                editField === "interests" ||
+                editField === "hobbies" ||
+                editField === "disabilityDetails" ||
+                editField === "location" ||
+                editField === "personalityTraits" ||
+                editField === "musicTaste" ||
+                editField === "movieTaste" ||
+                editField === "sportsInterest"
+              }
+              numberOfLines={
+                editField === "bio" ||
+                editField === "interests" ||
+                editField === "hobbies" ||
+                editField === "disabilityDetails"
+                  ? 4
+                  : 1
+              }
+              returnKeyType="done"
+              onSubmitEditing={handleSaveField}
+            />
+            <View
+              style={[styles.modalButtons, { marginTop: normalizeSpacing(10) }]}
+            >
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setModalVisible(false);
+                  setSelectedField(null);
+                }}
+              >
+                <Text style={[styles.modalButtonText, styles.cancelButtonText]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveField}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={[styles.modalButtonText, styles.saveButtonText]}>
+                    Save
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      <Modal
+        visible={imagePreviewVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImagePreviewVisible(false)}
+      >
+        <View style={styles.imagePreviewContainer}>
+          <TouchableOpacity
+            style={styles.closePreviewButton}
+            onPress={() => setImagePreviewVisible(false)}
+          >
+            <Ionicons
+              name="close-outline"
+              size={normalizeFont(30)}
+              color="white"
+            />
+          </TouchableOpacity>
+          {selectedImage ? (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+          ) : null}
+        </View>
+      </Modal>
+      <Modal
+        visible={settingsVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSettingsVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.settingsModalContainer}
+          activeOpacity={1}
+          onPress={() => setSettingsVisible(false)}
+        >
+          <View
+            style={styles.settingsModalContent}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsHeader}>
+              <Text style={styles.settingsTitle}>Settings</Text>
+              <TouchableOpacity
+                style={styles.closeSettingsButton}
+                onPress={() => setSettingsVisible(false)}
+              >
+                <Ionicons
+                  name="close-outline"
+                  size={normalizeFont(24)}
+                  color="#333"
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.settingsTabs}>
+              <TouchableOpacity
+                style={[
+                  styles.settingsTab,
+                  currentSettingsTab === "notifications" &&
+                    styles.activeSettingsTab,
+                ]}
+                onPress={() => setCurrentSettingsTab("notifications")}
+              >
+                <Text
+                  style={[
+                    styles.settingsTabText,
+                    currentSettingsTab === "notifications" &&
+                      styles.activeSettingsTabText,
+                  ]}
+                >
+                  Notifications
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.settingsTab,
+                  currentSettingsTab === "privacy" && styles.activeSettingsTab,
+                ]}
+                onPress={() => setCurrentSettingsTab("privacy")}
+              >
+                <Text
+                  style={[
+                    styles.settingsTabText,
+                    currentSettingsTab === "privacy" &&
+                      styles.activeSettingsTabText,
+                  ]}
+                >
+                  Privacy
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.settingsTab,
+                  currentSettingsTab === "account" && styles.activeSettingsTab,
+                ]}
+                onPress={() => setCurrentSettingsTab("account")}
+              >
+                <Text
+                  style={[
+                    styles.settingsTabText,
+                    currentSettingsTab === "account" &&
+                      styles.activeSettingsTabText,
+                  ]}
+                >
+                  Account
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {renderSettingsContent()}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      <Modal
+        visible={editOptionsVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditOptionsVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.settingsModalContainer}
+          activeOpacity={1}
+          onPress={() => setEditOptionsVisible(false)}
+        >
+          <View
+            style={styles.settingsModalContent}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsHeader}>
+              <Text style={styles.settingsTitle}>Edit Profile</Text>
+              <TouchableOpacity
+                style={styles.closeSettingsButton}
+                onPress={() => setEditOptionsVisible(false)}
+              >
+                <Ionicons
+                  name="close-outline"
+                  size={normalizeFont(24)}
+                  color="#333"
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.editOptionsContainer}>
+              <TouchableOpacity
+                style={styles.editOptionButton}
+                onPress={() => handleEditOptionSelect("profile")}
+              >
+                <View style={styles.editOptionIcon}>
+                  <Ionicons
+                    name="person-outline"
+                    size={normalizeFont(22)}
+                    color="#FF6F00"
+                  />
+                </View>
+                <View style={styles.editOptionContent}>
+                  <Text style={styles.editOptionTitle}>
+                    Profile Information
+                  </Text>
+                  <Text style={styles.editOptionDescription}>
+                    Edit your personal details
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={normalizeFont(22)}
+                  color="#999"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.editOptionButton}
+                onPress={() => handleEditOptionSelect("gallery")}
+              >
+                <View style={styles.editOptionIcon}>
+                  <Ionicons
+                    name="images-outline"
+                    size={normalizeFont(22)}
+                    color="#FF6F00"
+                  />
+                </View>
+                <View style={styles.editOptionContent}>
+                  <Text style={styles.editOptionTitle}>Photo Gallery</Text>
+                  <Text style={styles.editOptionDescription}>
+                    Manage your photos
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={normalizeFont(22)}
+                  color="#999"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      <View style={{ height: normalizeSpacing(40) }} /> {/* Bottom Spacer */}
+    </ScrollView>
+  );
+};
+
+interface DimensionsValue {
+  width: number;
+  height: number;
+  scale: number;
+  fontScale: number;
+}
 
 export default ProfileScreen;

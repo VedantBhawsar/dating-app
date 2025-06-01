@@ -6,12 +6,17 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "types": []
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
+    "app/profile-setup/basic",
+    "app/profile-setup/caste&community",
+    "app/profile-setup/values&futureplans",
+    "babel.config.js",
     "expo-env.d.ts"
-, "app/profile-setup/basic", "app/profile-setup/caste&community", "app/profile-setup/values&futureplans"  ]
+  ]
 }

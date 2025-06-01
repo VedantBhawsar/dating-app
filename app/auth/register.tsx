@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { useRouter, useNavigation } from "expo-router";
+import { authService } from "../../services/api";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -10,30 +11,53 @@ export default function RegisterScreen() {
     navigation.setOptions({ headerShown: false });
   }, []);
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleRegister = () => {
-    if (!name || !email || !password) {
+  const handleRegister = async () => {
+    if (!firstName || !email || !password) {
       Alert.alert("Error", "Please fill all fields");
       return;
     }
 
-    Alert.alert("Success", "Account created!");
-    router.replace("/auth/login");
+    try {
+      setLoading(true);
+      setError("");
+      
+      const response = await authService.register({
+        firstName,
+        email,
+        password
+      });
+
+      Alert.alert("Success", "Account created successfully!");
+      router.replace("/onboarding/basic/intro");
+    } catch (err: any) {
+      console.error("Registration error:", err);
+      setError(
+        err?.message || "Registration failed. Please try again."
+      );
+      Alert.alert("Registration Failed", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create an Account</Text>
 
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <TextInput
         style={styles.input}
-        placeholder="Full Name"
+        placeholder="First Name"
         placeholderTextColor="#ddd"
-        value={name}
-        onChangeText={setName}
+        value={firstName}
+        onChangeText={setFirstName}
       />
 
       <TextInput
@@ -43,6 +67,7 @@ export default function RegisterScreen() {
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
+        autoCapitalize="none"
       />
 
       <TextInput
@@ -54,8 +79,16 @@ export default function RegisterScreen() {
         onChangeText={setPassword}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
-        <Text style={styles.buttonText}>Register</Text>
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={handleRegister}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FF1647" />
+        ) : (
+          <Text style={styles.buttonText}>Register</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.replace("/auth/login")}>
@@ -129,5 +162,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textDecorationLine: "underline",
   },
+  errorText: {
+    color: "#ffcccc",
+    marginBottom: 15,
+    textAlign: "center",
+  },
 });
-

@@ -9,15 +9,24 @@ interface ChatListItemProps {
   image: string;
   time?: string;
   unreadCount?: number;
+  onPress?: () => void;
 }
 
-export default function ChatListItem({ id, name, message, image, time, unreadCount }: ChatListItemProps) {
+export default function ChatListItem({ id, name, message, image, time, unreadCount,  onPress }: ChatListItemProps) {
   const router = useRouter();
+  
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else {
+      router.push(`/chat/${id}`);
+    }
+  };
   
   return (
     <TouchableOpacity 
       style={styles.container} 
-      onPress={() => router.push(`/(modals)/chat/${id}`)}
+      onPress={handlePress}
     >
       <Image source={{ uri: image }} style={styles.avatar} />
       <View style={styles.content}>

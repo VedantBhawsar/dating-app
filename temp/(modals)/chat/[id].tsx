@@ -26,7 +26,7 @@ export default function ChatScreen() {
     });
   };
 
-  const renderMessage = ({ item }) => (
+  const renderMessage = ({ item }: { item: any }) => (
     <Message
       text={item.text}
       timestamp={item.timestamp}
@@ -81,7 +81,6 @@ export default function ChatScreen() {
               value={message}
               onChangeText={setMessage}
               multiline
-              maxHeight={100}
             />
             <TouchableOpacity 
               style={[styles.sendButton, !message.trim() && styles.sendButtonDisabled]} 
