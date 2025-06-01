@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SOCKET_URL } from "@/constants/config";
-
+import { io, Socket } from "socket.io-client";
 
 // Define event types for type safety
 export type SocketEventType =
@@ -12,7 +12,9 @@ export type SocketEventType =
   | "messages-read"
   | "new-notification"
   | "error"
-  | "user-info";
+  | "user-info"
+  | "get-user-info"
+  | "join-chat";
 
 // Define message interface
 export interface Message {
@@ -21,8 +23,13 @@ export interface Message {
   senderId: string;
   content: string;
   messageType: "TEXT" | "IMAGE";
-  createdAt: string;
+  sentAt: string;
   isRead: boolean;
+  sender: {
+    id: string;
+    name: string;
+    profilePicture: string;
+  };
 }
 
 // Simple event emitter implementation
@@ -47,18 +54,17 @@ class EventEmitter {
   }
 }
 
-// Simplified socket service that uses polling instead of WebSockets
+// Real-time Socket.IO service
 class SocketService extends EventEmitter {
+  private socket: Socket | null = null;
   private connected: boolean = false;
   private userId: string | null = null;
   private currentChatId: string | null = null;
-  private pollingInterval: NodeJS.Timeout | null = null;
-  private lastMessageTimestamp: number = Date.now();
 
   // Initialize connection
   async connect(): Promise<void> {
     try {
-      if (this.connected) {
+      if (this.connected && this.socket) {
         console.log("Already connected");
         return;
       }
@@ -74,89 +80,90 @@ class SocketService extends EventEmitter {
         return;
       }
 
-      // Get user info
-      const userInfo = await AsyncStorage.getItem("userInfo");
-      if (userInfo) {
-        const parsedUserInfo = JSON.parse(userInfo);
-        this.userId = parsedUserInfo.id;
-      }
+      // Connect to socket server with token auth
+      this.socket = io(SOCKET_URL, {
+        auth: { token }
+      });
 
-      this.connected = true;
-      this.emit("connect");
-      console.log("Connected successfully");
+      // Set up event listeners
+      this.socket?.on('connect', () => {
+        this.connected = true;
+        console.log('Socket connected successfully');
+        this.emit('connect');
+        
+        // Get user info
+        this.socket?.emit('get-user-info');
+      });
 
-      // Start polling for new messages
-      this.startPolling();
+      this.socket?.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        this.emit('connect_error', error);
+      });
+
+      this.socket?.on('disconnect', (reason) => {
+        this.connected = false;
+        this.currentChatId = null;
+        console.log('Socket disconnected:', reason);
+        this.emit('disconnect', reason);
+      });
+
+      // Forward all events
+      this.socket?.on('new-message', (data) => {
+        console.log('New message received:', data);
+        this.emit('new-message', data);
+      });
+
+      this.socket?.on('user-typing', (data) => {
+        console.log('User typing:', data);
+        this.emit('user-typing', data);
+      });
+
+      this.socket?.on('messages-read', (data) => {
+        console.log('Messages read:', data);
+        this.emit('messages-read', data);
+      });
+
+      this.socket?.on('new-notification', (data) => {
+        console.log('New notification:', data);
+        this.emit('new-notification', data);
+      });
+
+      this.socket?.on('error', (data) => {
+        console.error('Socket error:', data);
+        this.emit('error', data);
+      });
+
+      this.socket?.on('user-info', (data) => {
+        console.log('User info received:', data);
+        this.userId = data.userId;
+        this.emit('user-info', data);
+      });
     } catch (error) {
       console.error("Connection error:", error);
       this.emit("connect_error", { message: "Failed to connect" });
     }
   }
 
-  // Start polling for new messages
-  private startPolling(): void {
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-    }
-
-    // Poll every 3 seconds
-    this.pollingInterval = setInterval(async () => {
-      if (!this.connected || !this.currentChatId) return;
-
-      try {
-        // Get new messages since last check
-        const token = await AsyncStorage.getItem("accessToken");
-        if (!token) return;
-
-        const response = await fetch(
-          `${SOCKET_URL}/chats/${this.currentChatId}/messages?since=${this.lastMessageTimestamp}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.ok) {
-          const newMessages = await response.json();
-          if (newMessages && newMessages.length > 0) {
-            // Update last message timestamp
-            this.lastMessageTimestamp = Date.now();
-
-            // Emit new messages
-            newMessages.forEach((message: Message) => {
-              this.emit("new-message", message);
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
-      }
-    }, 3000);
-  }
-
   // Disconnect
   disconnect(): void {
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
     this.connected = false;
     this.currentChatId = null;
-    this.emit("disconnect", "Client disconnected");
-    console.log("Disconnected");
+    console.log("Disconnected from socket");
   }
 
   // Join a chat room
   joinChat(chatId: string): void {
-    if (!this.connected) {
-      console.error("Not connected");
+    if (!this.connected || !this.socket) {
+      console.error("Not connected to socket");
       return;
     }
 
+    this.socket?.emit('join-chat', chatId);
     this.currentChatId = chatId;
-    this.lastMessageTimestamp = Date.now();
     console.log(`Joined chat room: ${chatId}`);
   }
 
@@ -166,32 +173,18 @@ class SocketService extends EventEmitter {
     content: string,
     messageType: "TEXT" | "IMAGE" = "TEXT"
   ): Promise<void> {
-    if (!this.connected) {
-      console.error("Not connected");
+    if (!this.connected || !this.socket) {
+      console.error("Not connected to socket");
       return;
     }
 
     try {
-      const token = await AsyncStorage.getItem("accessToken");
-      if (!token) return;
-
-      const response = await fetch(`${SOCKET_URL}/chats/${chatId}/messages`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content,
-          messageType,
-        }),
+      this.socket?.emit('send-message', {
+        chatId,
+        content,
+        messageType
       });
-
-      if (response.ok) {
-        const newMessage = await response.json();
-        // Emit the new message locally to update UI immediately
-        this.emit("new-message", newMessage);
-      }
+      console.log(`Message sent to chat ${chatId}: ${content}`);
     } catch (error) {
       console.error("Error sending message:", error);
       this.emit("error", { message: "Failed to send message" });
@@ -200,22 +193,14 @@ class SocketService extends EventEmitter {
 
   // Send typing indicator
   async sendTypingIndicator(chatId: string): Promise<void> {
-    if (!this.connected) {
-      console.error("Not connected");
+    if (!this.connected || !this.socket) {
+      console.error("Not connected to socket");
       return;
     }
 
     try {
-      const token = await AsyncStorage.getItem("accessToken");
-      if (!token) return;
-
-      await fetch(`${SOCKET_URL}/chats/${chatId}/typing`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      this.socket?.emit('typing', chatId);
+      console.log(`Typing indicator sent to chat ${chatId}`);
     } catch (error) {
       console.error("Error sending typing indicator:", error);
     }
@@ -226,30 +211,17 @@ class SocketService extends EventEmitter {
     chatId: string,
     messageIds: string[]
   ): Promise<void> {
-    if (!this.connected) {
-      console.error("Not connected");
+    if (!this.connected || !this.socket) {
+      console.error("Not connected to socket");
       return;
     }
 
     try {
-      const token = await AsyncStorage.getItem("accessToken");
-      if (!token) return;
-
-      const response = await fetch(`${SOCKET_URL}/chats/${chatId}/messages/read`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messageIds,
-        }),
+      this.socket?.emit('mark-read', {
+        chatId,
+        messageIds
       });
-
-      if (response.ok) {
-        // Emit the read receipts locally
-        this.emit("messages-read", { chatId, messageIds });
-      }
+      console.log(`Marked messages as read in chat ${chatId}: ${messageIds.join(', ')}`);
     } catch (error) {
       console.error("Error marking messages as read:", error);
     }
@@ -257,7 +229,7 @@ class SocketService extends EventEmitter {
 
   // Check if connected
   isConnected(): boolean {
-    return this.connected;
+    return this.connected && this.socket !== null;
   }
 }
 

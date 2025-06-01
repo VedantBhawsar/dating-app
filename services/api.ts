@@ -101,6 +101,18 @@ export const authService = {
       throw error;
     }
   },
+
+  getUserByToken: async ()=> {
+    try {
+      const response = await api.get("/auth/me");
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        throw error.response.data;
+      }
+      throw error;
+    }
+  }
 };
 
 export const profileService = {
