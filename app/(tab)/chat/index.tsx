@@ -1,154 +1,120 @@
-import { View, SafeAreaView, StyleSheet, FlatList, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { View, SafeAreaView, StyleSheet, FlatList, Text, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
 import SearchBar from '../../../components/chat/SearchBar';
-import RecentContacts from '../../../components/chat/RecentContacts';
 import ChatListItem from '../../../components/chat/ChatListItem';
 import ChatHeader from '../../../components/headers/ChatHeader';
-import { Chat } from '../../../data/chats';
-import { messageService } from '../../../services/api';
 import socketService from '../../../services/socketService';
-import { router } from 'expo-router';
-
-
-
-interface IMessage {
-  content: string;
-  messageType: string;
-  sentAt: string;
-  sentByMe: boolean;
-}
-
-interface IUser {
-  id: string;
-  name: string;
-  profilePicture: string;
-}
-
-interface IChat {
-  chatId: string;
-  lastActivity: string;
-  lastMessage: IMessage;
-  unreadCount: number;
-  user: IUser;
-}
-
+import useChatStore, { IStoreChat } from '../../../store/chatStore';
+import { router, useFocusEffect } from 'expo-router';
+import { authService } from '@/services/api';
 
 export default function ChatsScreen() {
-  const [chats, setChats] = useState<IChat[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    chats,
+    isLoading,
+    error,
+    fetchChats: storeFetchChats,
+    setCurrentUserId,
+    addMessageFromSocket,
+    handleOtherUserReadReceipt,
+  } = useChatStore();
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredChats, setFilteredChats] = useState<IChat[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Function to fetch chats from the backend
-  const fetchChats = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await messageService.getChats();
-      console.log(response)
-      setChats(response);
-      setFilteredChats(response);
-    } catch (err: any) {
-      console.error('Error fetching chats:', err);
-      setError(err.message || 'Failed to load chats');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUserAndChats = async () => {
+        try {
+          const user = await authService.getUserByToken();
+          setCurrentUserId(user.id);
+          storeFetchChats();
+        } catch (e) {
+          console.error("Failed to get user or fetch chats", e);
+        }
+      };
+      fetchUserAndChats();
+    }, [setCurrentUserId, storeFetchChats])
+  );
 
-  // Connect to WebSocket when component mounts
+  const onNewMessage = useCallback((data: any) => {
+    addMessageFromSocket(data.chatId, data.message, data.newChatData);
+    console.log("New message received:", data);
+  }, [addMessageFromSocket]);
+
+  const onMessagesRead = useCallback((data: any) => {
+    handleOtherUserReadReceipt(data.chatId, data.readerId, data.messageIds);
+  }, [handleOtherUserReadReceipt]);
+
   useEffect(() => {
     const initializeSocket = async () => {
       try {
         await socketService.connect();
-        
-        // Listen for new messages
-        socketService.on('new-message', (data) => {
-          console.log('New message received:', data);
-          // Refresh chats to show the latest message
-          fetchChats();
-        });
-        
-        // Listen for messages being read
-        socketService.on('messages-read', (data) => {
-          console.log('Messages marked as read:', data);
-          // Refresh chats to update unread counts
-          fetchChats();
-        });
-        
-        // Listen for new notifications
-        socketService.on('new-notification', (data) => {
-          console.log('New notification received:', data);
-          // Handle notification (could show a toast or update UI)
-        });
+        socketService.on('new-message', onNewMessage);
+        socketService.on('messages-read', onMessagesRead);
       } catch (err) {
         console.error('Failed to connect to WebSocket:', err);
       }
     };
-    
+
     initializeSocket();
-    fetchChats();
-    
-    // Cleanup function to disconnect socket when component unmounts
+
     return () => {
-      socketService.off('new-message', () => {});
-      socketService.off('messages-read', () => {});
-      socketService.off('new-notification', () => {});
+      socketService.off('new-message', onNewMessage);
+      socketService.off('messages-read', onMessagesRead);
     };
-  }, []);
+  }, [onNewMessage, onMessagesRead]);
 
-  // Handle search functionality
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredChats(chats);
-    } else {
-      const filtered = chats.filter(chat => 
-        chat.user.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredChats(filtered);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await storeFetchChats();
+    } catch (e) {
+      console.error("Failed to refresh chats on pull-to-refresh:", e);
+      // Optionally, you could display a toast or other feedback to the user here
+    } finally {
+      setRefreshing(false);
     }
-  }, [searchQuery, chats]);
+  }, [storeFetchChats]);
 
-  // Navigate to chat detail screen
+  const filteredChats = chats.filter((chat) =>
+    chat.user.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleChatPress = (chatId: string) => {
     router.push(`/chat/${chatId}`);
   };
 
-  const renderItem = ({ item }: { item:   IChat }) => (
+  const renderItem = ({ item }: { item: IStoreChat }) => (
     <ChatListItem
       id={item.chatId}
-      key={item.chatId}
       name={item.user.name}
-      message={item.lastMessage.content}
+      message={item.lastMessage?.content || ''}
       image={item.user.profilePicture}
-      time={new Date(item.lastActivity).toLocaleString()}
+      time={item.lastActivity.toLocaleString()}
       unreadCount={item.unreadCount}
-      onPress={() => handleChatPress(item.chatId)}
+     onPress={() => handleChatPress(item.chatId)}
     />
   );
 
-  // Render loading state
-  if (isLoading) {
+  if (isLoading && chats.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <ChatHeader />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FF6F00" />
-          <Text style={styles.loadingText}>Loading chats...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Render error state
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
         <ChatHeader />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchChats}>
+          <TouchableOpacity style={styles.retryButton} onPress={storeFetchChats}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -156,28 +122,6 @@ export default function ChatsScreen() {
     );
   }
 
-  // Render empty state
-  if (filteredChats.length === 0) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <ChatHeader />
-          <View style={styles.searchContainer}>
-            <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
-          </View>
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              {searchQuery.trim() !== '' 
-                ? 'No chats match your search' 
-                : 'No chats yet. Match with someone to start chatting!'}
-            </Text>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Render chats list
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -185,77 +129,41 @@ export default function ChatsScreen() {
         <View style={styles.searchContainer}>
           <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
         </View>
-        <FlatList
-          data={filteredChats}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.chatId}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-        />
+        {filteredChats.length > 0 ? (
+          <FlatList
+            data={filteredChats}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.chatId}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#FF6F00']} // Android
+                tintColor={'#FF6F00'} // iOS
+              />
+            }
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {searchQuery.trim() !== '' ? 'No chats match your search' : 'No chats yet.'}
+            </Text>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-  },
-  searchContainer: {
-    padding: 10, 
-    paddingBottom: 0
-  },
-  listContent: {
-    paddingBottom: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#FF6F00',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  content: { flex: 1 },
+  searchContainer: { padding: 10, paddingBottom: 0 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  errorText: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 20 },
+  retryButton: { backgroundColor: '#FF6F00', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  retryButtonText: { color: 'white', fontWeight: 'bold' },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  emptyText: { fontSize: 16, color: '#666', textAlign: 'center' },
 });

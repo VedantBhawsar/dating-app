@@ -7,7 +7,8 @@
         "./*"
       ]
     },
-    "types": []
+    "types": [],
+    "jsx": "react-native"
   },
   "include": [
     "**/*.ts",

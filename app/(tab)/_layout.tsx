@@ -2,9 +2,12 @@ import { Tabs } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Keyboard } from 'react-native';
+import { authService } from '@/services/api';
+import { useRouter } from 'expo-router';
 
 export default function TabLayout() {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -25,6 +28,16 @@ export default function TabLayout() {
       keyboardDidShowListener.remove();
     };
   }, []);
+
+
+  useEffect(()=> {
+    authService.getUserByToken().catch((error)=> {
+      console.error(error)
+
+      router.push("/auth/login")
+    })
+
+  }, [])
 
   return (
     <Tabs screenOptions={{

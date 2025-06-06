@@ -162,6 +162,10 @@ class SocketService extends EventEmitter {
       return;
     }
 
+    if (this.currentChatId === chatId) {
+      console.log(`Already in chat room: ${chatId}`);
+      return;
+    }
     this.socket?.emit('join-chat', chatId);
     this.currentChatId = chatId;
     console.log(`Joined chat room: ${chatId}`);
